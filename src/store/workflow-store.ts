@@ -29,7 +29,7 @@ import type {
   WorkflowNodeData,
   WorkflowNodeKind,
 } from "@/types/node";
-import type { WorkflowRun } from "@/types/workflow";
+import type { Workflow, WorkflowRun, WorkflowSummary } from "@/types/workflow";
 
 type WorkflowSnapshot = {
   nodes: WorkflowEditorNode[];
@@ -38,6 +38,10 @@ type WorkflowSnapshot = {
 };
 
 type WorkflowStore = {
+  workflowId: string;
+  workflowName: string;
+  workflowDescription: string | null;
+  workflows: WorkflowSummary[];
   nodes: WorkflowEditorNode[];
   edges: Edge[];
   viewport: Viewport;
@@ -58,6 +62,13 @@ type WorkflowStore = {
   setSelectedNodeIds: (nodeIds: string[]) => void;
   setActiveRunId: (runId: string | null) => void;
   setViewport: (viewport: Viewport) => void;
+  setWorkflowMeta: (name: string, description: string | null) => void;
+  setRuns: (runs: WorkflowRun[]) => void;
+  hydrateWorkflow: (
+    workflow: Workflow,
+    workflows: WorkflowSummary[],
+    runs: WorkflowRun[],
+  ) => void;
   toggleSidebar: () => void;
   undo: () => void;
   redo: () => void;
@@ -107,6 +118,18 @@ function commitSnapshot(
 }
 
 export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
+  workflowId: sampleWorkflow.id,
+  workflowName: sampleWorkflow.name,
+  workflowDescription: sampleWorkflow.description,
+  workflows: [
+    {
+      id: sampleWorkflow.id,
+      name: sampleWorkflow.name,
+      description: sampleWorkflow.description,
+      createdAt: sampleWorkflow.createdAt,
+      updatedAt: sampleWorkflow.updatedAt,
+    },
+  ],
   nodes: sampleWorkflow.nodes,
   edges: sampleWorkflow.edges,
   viewport: sampleWorkflow.viewport,
@@ -207,6 +230,31 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   setSelectedNodeIds: (selectedNodeIds) => set({ selectedNodeIds }),
   setActiveRunId: (activeRunId) => set({ activeRunId }),
   setViewport: (viewport) => set({ viewport }),
+  setWorkflowMeta: (workflowName, workflowDescription) =>
+    set({ workflowName, workflowDescription }),
+  setRuns: (runs) =>
+    set({
+      runs,
+      activeRunId: runs[0]?.id ?? null,
+    }),
+  hydrateWorkflow: (workflow, workflows, runs) =>
+    set({
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      workflowDescription: workflow.description,
+      workflows,
+      nodes: workflow.nodes,
+      edges: workflow.edges,
+      viewport: workflow.viewport,
+      runs,
+      activeRunId: runs[0]?.id ?? null,
+      selectedNodeId: null,
+      selectedNodeIds: [],
+      past: [],
+      future: [],
+      canUndo: false,
+      canRedo: false,
+    }),
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   undo: () => {

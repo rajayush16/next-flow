@@ -24,6 +24,12 @@ export type WorkflowSummary = Pick<
   "id" | "name" | "description" | "createdAt" | "updatedAt"
 >;
 
+export type WorkflowBootstrap = {
+  activeWorkflow: Workflow;
+  workflows: WorkflowSummary[];
+  runs: WorkflowRun[];
+};
+
 export type WorkflowRun = {
   id: string;
   workflowId: string;

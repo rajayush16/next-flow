@@ -2,9 +2,13 @@
 
 import { useEffect } from "react";
 import {
+  ChevronDown,
+  LoaderCircle,
+  Plus,
   PanelLeftClose,
   Play,
   Redo2,
+  RotateCcw,
   Share2,
   Sparkles,
   Trash2,
@@ -24,6 +28,7 @@ import { EditorSidebar } from "@/components/layout/editor-sidebar";
 import { HistoryPanel } from "@/components/layout/history-panel";
 import { NextFlowLogo } from "@/components/ui/nextflow-logo";
 import { WorkflowNode } from "@/components/ui/workflow-node";
+import { cn } from "@/lib/utils";
 import { useWorkflowStore } from "@/store/workflow-store";
 
 const nodeTypes = {
@@ -131,26 +136,79 @@ function FlowCanvas() {
   );
 }
 
-export function WorkspaceShell() {
+type WorkspaceShellProps = {
+  isPending?: boolean;
+  onCreateWorkflow?: () => void | Promise<void>;
+  onOpenWorkflow?: (workflowId: string) => void | Promise<void>;
+  onResetToSample?: () => void | Promise<void>;
+  onSaveWorkflow?: () => void | Promise<void>;
+};
+
+export function WorkspaceShell({
+  isPending = false,
+  onCreateWorkflow,
+  onOpenWorkflow,
+  onResetToSample,
+  onSaveWorkflow,
+}: WorkspaceShellProps) {
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
   const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
   const canUndo = useWorkflowStore((state) => state.canUndo);
   const canRedo = useWorkflowStore((state) => state.canRedo);
+  const workflowName = useWorkflowStore((state) => state.workflowName);
+  const workflowDescription = useWorkflowStore(
+    (state) => state.workflowDescription,
+  );
+  const workflows = useWorkflowStore((state) => state.workflows);
+  const workflowId = useWorkflowStore((state) => state.workflowId);
+  const setWorkflowMeta = useWorkflowStore((state) => state.setWorkflowMeta);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#050507] text-white">
       <header className="flex items-center justify-between border-b border-white/6 px-6 py-4">
         <div className="flex items-center gap-4">
           <NextFlowLogo />
-          <div>
+          <div className="min-w-[320px]">
             <p className="text-xs uppercase tracking-[0.32em] text-white/28">
               NextFlow
             </p>
-            <h1 className="mt-1 text-lg font-semibold tracking-tight text-white">
-              Product Marketing Kit Generator
-            </h1>
+            <div className="mt-1 flex items-center gap-3">
+              <input
+                value={workflowName}
+                onChange={(event) =>
+                  setWorkflowMeta(event.target.value, workflowDescription)
+                }
+                className="min-w-[240px] bg-transparent text-lg font-semibold tracking-tight text-white outline-none"
+              />
+              <div className="relative">
+                <select
+                  value={workflowId}
+                  onChange={(event) => onOpenWorkflow?.(event.target.value)}
+                  className="appearance-none rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 pr-9 text-sm text-white/68 outline-none transition hover:bg-white/[0.06]"
+                >
+                  {workflows.map((workflow) => (
+                    <option
+                      key={workflow.id}
+                      value={workflow.id}
+                      className="bg-[#09090d]"
+                    >
+                      {workflow.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+              </div>
+            </div>
+            <input
+              value={workflowDescription ?? ""}
+              onChange={(event) =>
+                setWorkflowMeta(workflowName, event.target.value || null)
+              }
+              placeholder="Describe this workflow"
+              className="mt-1 w-full bg-transparent text-sm text-white/42 outline-none placeholder:text-white/22"
+            />
           </div>
         </div>
 
@@ -182,10 +240,31 @@ export function WorkspaceShell() {
           </button>
           <button
             type="button"
+            onClick={onResetToSample}
             className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
           >
-            <Share2 className="h-4 w-4" />
-            Export
+            <RotateCcw className="h-4 w-4" />
+            Sample
+          </button>
+          <button
+            type="button"
+            onClick={onCreateWorkflow}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            <Plus className="h-4 w-4" />
+            New
+          </button>
+          <button
+            type="button"
+            onClick={onSaveWorkflow}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            {isPending ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <Share2 className="h-4 w-4" />
+            )}
+            Save
           </button>
           <button
             type="button"
@@ -219,10 +298,20 @@ export function WorkspaceShell() {
                 <p className="text-xs uppercase tracking-[0.24em] text-white/28">
                   Workflow Builder
                 </p>
-                <p className="text-sm text-white/58">
+                <p
+                  className={cn(
+                    "text-sm text-white/58",
+                    isPending && "text-violet-200",
+                  )}
+                >
+                  {isPending
+                    ? "Syncing workflow state..."
+                    : null}
                   {selectedNodeIds.length > 0
-                    ? `${selectedNodeIds.length} node${selectedNodeIds.length === 1 ? "" : "s"} selected`
-                    : "React Flow canvas, protected routes, and Krea-inspired shell"}
+                    ? `${isPending ? " " : ""}${selectedNodeIds.length} node${selectedNodeIds.length === 1 ? "" : "s"} selected`
+                    : isPending
+                      ? ""
+                      : "React Flow canvas, protected routes, and Krea-inspired shell"}
                 </p>
               </div>
             </div>
