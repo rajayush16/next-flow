@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import {
   AlignLeft,
   Clapperboard,
@@ -75,10 +76,87 @@ function InputField({
   );
 }
 
+async function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Unable to read file preview."));
+    };
+
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) {
   const Icon = iconMap[data.icon];
   const edges = useWorkflowStore((state) => state.edges);
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadState, setUploadState] = useState<{
+    status: "idle" | "uploading" | "error";
+    message: string | null;
+  }>({
+    status: "idle",
+    message: null,
+  });
+
+  async function handleUpload(file: File, kind: "upload-image" | "upload-video") {
+    setUploadState({
+      status: "uploading",
+      message: null,
+    });
+
+    try {
+      const body = new FormData();
+      body.set("file", file);
+
+      const response = await fetch("/api/uploads", {
+        method: "POST",
+        body,
+      });
+
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          fileName: string;
+          url: string;
+        };
+
+        updateNodeData(id, "fileName", payload.fileName);
+        updateNodeData(
+          id,
+          kind === "upload-image" ? "imageUrl" : "videoUrl",
+          payload.url,
+        );
+        setUploadState({ status: "idle", message: "Uploaded via Transloadit." });
+        return;
+      }
+
+      const localPreview = await fileToDataUrl(file);
+      updateNodeData(id, "fileName", file.name);
+      updateNodeData(
+        id,
+        kind === "upload-image" ? "imageUrl" : "videoUrl",
+        localPreview,
+      );
+      setUploadState({
+        status: "idle",
+        message: "Transloadit unavailable. Using local preview.",
+      });
+    } catch (error) {
+      setUploadState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Upload failed.",
+      });
+    }
+  }
 
   return (
     <div
@@ -147,6 +225,21 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
 
         {data.kind === "upload-image" ? (
           <div className="space-y-3">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                  return;
+                }
+
+                void handleUpload(file, "upload-image");
+                event.target.value = "";
+              }}
+            />
             <div className="rounded-[24px] border border-white/8 bg-[#131317] p-3">
               {data.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -156,17 +249,50 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
                   className="h-36 w-full rounded-[18px] object-cover"
                 />
               ) : (
-                <div className="flex h-36 items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30">
-                  Drop image
-                </div>
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30 transition hover:border-white/20 hover:text-white/54"
+                >
+                  {uploadState.status === "uploading" ? "Uploading..." : "Upload image"}
+                </button>
               )}
             </div>
-            <p className="text-xs text-white/35">{data.fileName ?? "No file selected"}</p>
+            <div className="flex items-center justify-between gap-3 text-xs text-white/35">
+              <p>{data.fileName ?? "No file selected"}</p>
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/58 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                Replace
+              </button>
+            </div>
+            {uploadState.message ? (
+              <p className="text-[11px] leading-5 text-white/42">
+                {uploadState.message}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
         {data.kind === "upload-video" ? (
           <div className="space-y-3">
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                  return;
+                }
+
+                void handleUpload(file, "upload-video");
+                event.target.value = "";
+              }}
+            />
             <div className="overflow-hidden rounded-[24px] border border-white/8 bg-[#131317] p-3">
               {data.videoUrl ? (
                 <video
@@ -177,12 +303,30 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
                   controls
                 />
               ) : (
-                <div className="flex h-36 items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30">
-                  Drop video
-                </div>
+                <button
+                  type="button"
+                  onClick={() => videoInputRef.current?.click()}
+                  className="flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30 transition hover:border-white/20 hover:text-white/54"
+                >
+                  {uploadState.status === "uploading" ? "Uploading..." : "Upload video"}
+                </button>
               )}
             </div>
-            <p className="text-xs text-white/35">{data.fileName ?? "No file selected"}</p>
+            <div className="flex items-center justify-between gap-3 text-xs text-white/35">
+              <p>{data.fileName ?? "No file selected"}</p>
+              <button
+                type="button"
+                onClick={() => videoInputRef.current?.click()}
+                className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/58 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                Replace
+              </button>
+            </div>
+            {uploadState.message ? (
+              <p className="text-[11px] leading-5 text-white/42">
+                {uploadState.message}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

@@ -1,3 +1,5 @@
+import { Transloadit } from "transloadit";
+
 import { env } from "@/lib/env";
 
 export const transloaditConfig = {
@@ -7,6 +9,16 @@ export const transloaditConfig = {
 };
 
 export function getTransloaditClient() {
-  // The official Transloadit SDK is wired in the upload route slice.
-  return null;
+  if (!transloaditConfig.key || !transloaditConfig.secret) {
+    return null;
+  }
+
+  return new Transloadit({
+    authKey: transloaditConfig.key,
+    authSecret: transloaditConfig.secret,
+  });
+}
+
+export function isTransloaditConfigured() {
+  return Boolean(transloaditConfig.key && transloaditConfig.secret);
 }
