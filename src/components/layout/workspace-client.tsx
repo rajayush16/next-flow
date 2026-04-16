@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { runWorkflowAction } from "@/server/actions/workflow-execution";
 import {
   getOrCreateSampleWorkflowAction,
   saveWorkflowAction,
@@ -16,7 +17,6 @@ import { WorkspaceShell } from "./workspace-shell";
 export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const hasHydrated = useRef(false);
   const [isPending, startTransition] = useTransition();
 
   const hydrateWorkflow = useWorkflowStore((state) => state.hydrateWorkflow);
@@ -28,19 +28,32 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const viewport = useWorkflowStore((state) => state.viewport);
+  const runs = useWorkflowStore((state) => state.runs);
+  const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
 
   useEffect(() => {
-    if (hasHydrated.current) {
-      return;
-    }
-
     hydrateWorkflow(
       bootstrap.activeWorkflow,
       bootstrap.workflows,
       bootstrap.runs,
     );
-    hasHydrated.current = true;
   }, [bootstrap.activeWorkflow, bootstrap.runs, bootstrap.workflows, hydrateWorkflow]);
+
+  useEffect(() => {
+    const hasLiveRun = runs.some(
+      (run) => run.status === "queued" || run.status === "running",
+    );
+
+    if (!hasLiveRun) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 2500);
+
+    return () => window.clearInterval(interval);
+  }, [router, runs]);
 
   async function handleCreateWorkflow() {
     startTransition(async () => {
@@ -89,12 +102,38 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
     });
   }
 
+  async function handleRunWorkflow(target: "single" | "selected" | "full") {
+    startTransition(async () => {
+      const nodeIds =
+        target === "full"
+          ? []
+          : target === "single"
+            ? selectedNodeIds.slice(0, 1)
+            : selectedNodeIds;
+
+      await runWorkflowAction({
+        workflowId,
+        name: workflowName,
+        description: workflowDescription,
+        target,
+        nodeIds,
+        graph: {
+          nodes,
+          edges,
+          viewport,
+        },
+      });
+      router.refresh();
+    });
+  }
+
   return (
     <WorkspaceShell
       isPending={isPending}
       onCreateWorkflow={handleCreateWorkflow}
       onOpenWorkflow={handleOpenWorkflow}
       onResetToSample={handleResetToSample}
+      onRunWorkflow={handleRunWorkflow}
       onSaveWorkflow={handleSaveWorkflow}
     />
   );

@@ -1,3 +1,5 @@
+import { auth } from "@trigger.dev/sdk/v3";
+
 import { env } from "@/lib/env";
 
 export const triggerConfig = {
@@ -5,8 +7,12 @@ export const triggerConfig = {
   secretKey: env.TRIGGER_SECRET_KEY,
 };
 
-export function getTriggerClient() {
-  // Trigger.dev tasks are registered in the /trigger directory and
-  // triggered from server actions and route handlers in later slices.
-  return null;
+if (env.TRIGGER_SECRET_KEY) {
+  auth.configure({
+    accessToken: env.TRIGGER_SECRET_KEY,
+  });
+}
+
+export function isTriggerConfigured() {
+  return Boolean(env.TRIGGER_SECRET_KEY && env.TRIGGER_PROJECT_ID);
 }

@@ -141,6 +141,7 @@ type WorkspaceShellProps = {
   onCreateWorkflow?: () => void | Promise<void>;
   onOpenWorkflow?: (workflowId: string) => void | Promise<void>;
   onResetToSample?: () => void | Promise<void>;
+  onRunWorkflow?: (target: "single" | "selected" | "full") => void | Promise<void>;
   onSaveWorkflow?: () => void | Promise<void>;
 };
 
@@ -149,6 +150,7 @@ export function WorkspaceShell({
   onCreateWorkflow,
   onOpenWorkflow,
   onResetToSample,
+  onRunWorkflow,
   onSaveWorkflow,
 }: WorkspaceShellProps) {
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
@@ -277,6 +279,24 @@ export function WorkspaceShell({
           </button>
           <button
             type="button"
+            onClick={() => onRunWorkflow?.(selectedNodeIds.length > 0 ? "single" : "full")}
+            className="flex h-11 items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-4 text-sm text-violet-100 transition hover:bg-violet-500/16"
+          >
+            <Play className="h-4 w-4 fill-current" />
+            {selectedNodeIds.length > 0 ? "Run node" : "Quick run"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onRunWorkflow?.("selected")}
+            disabled={selectedNodeIds.length === 0}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <Play className="h-4 w-4 fill-current" />
+            Run selected
+          </button>
+          <button
+            type="button"
+            onClick={() => onRunWorkflow?.("full")}
             className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-white/90"
           >
             <Play className="h-4 w-4 fill-current" />
