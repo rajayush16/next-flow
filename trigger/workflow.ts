@@ -7,7 +7,17 @@ import {
   readTextInput,
   resolveExecutionNodeIds,
   summarizeNodeInputs,
+  summarizeNodeOutputs,
 } from "@/features/workflow/execution-plan";
+import { getGeminiClient } from "@/lib/gemini";
+import {
+  cleanupTempDir,
+  getVideoDurationInSeconds,
+  imageSourceToGeminiPart,
+  materializeAssetInput,
+  runFfmpeg,
+  storeProcessedAsset,
+} from "@/lib/media";
 import {
   completeNodeRunRecord,
   completeWorkflowRunRecord,
@@ -102,18 +112,47 @@ export const executeCropImageNodeTask = task({
       throw new Error("Crop image nodes require an input image.");
     }
 
-    return {
-      nodeId: node.id,
-      nodeKind: node.data.kind,
-      status: "success",
-      inputs,
-      outputs: { output: imageUrl },
-      inputSummary: summarizeNodeInputs(inputs),
-      outputSummary: imageUrl,
-      errorMessage: null,
-      logs: ["Crop node scaffold executed. FFmpeg implementation lands in the next slice."],
-      dataPatch: {},
-    };
+    const xPercent = Number.parseFloat(readTextInput(inputs, "x_percent") || "0");
+    const yPercent = Number.parseFloat(readTextInput(inputs, "y_percent") || "0");
+    const widthPercent = Number.parseFloat(readTextInput(inputs, "width_percent") || "100");
+    const heightPercent = Number.parseFloat(readTextInput(inputs, "height_percent") || "100");
+    const asset = await materializeAssetInput(imageUrl, `${node.id}-source`);
+    const outputPath = `${asset.tempDir}\\${node.id}-cropped.png`;
+
+    try {
+      await runFfmpeg([
+        "-y",
+        "-i",
+        asset.inputPath,
+        "-vf",
+        `crop=iw*${widthPercent / 100}:ih*${heightPercent / 100}:iw*${xPercent / 100}:ih*${yPercent / 100}`,
+        outputPath,
+      ]);
+
+      const croppedUrl = await storeProcessedAsset({
+        outputPath,
+        fileName: `${node.id}-cropped.png`,
+        mimeType: "image/png",
+      });
+      const outputs = { output: croppedUrl };
+
+      return {
+        nodeId: node.id,
+        nodeKind: node.data.kind,
+        status: "success",
+        inputs,
+        outputs,
+        inputSummary: summarizeNodeInputs(inputs),
+        outputSummary: summarizeNodeOutputs(outputs),
+        errorMessage: null,
+        logs: ["Image cropped with FFmpeg inside Trigger.dev."],
+        dataPatch: {
+          imageUrl: croppedUrl,
+        },
+      };
+    } finally {
+      await cleanupTempDir(asset.tempDir);
+    }
   },
 });
 
@@ -130,18 +169,59 @@ export const executeExtractFrameNodeTask = task({
       throw new Error("Extract frame nodes require an input video.");
     }
 
-    return {
-      nodeId: node.id,
-      nodeKind: node.data.kind,
-      status: "success",
-      inputs,
-      outputs: { output: "" },
-      inputSummary: summarizeNodeInputs(inputs),
-      outputSummary: "Frame extraction scaffold completed.",
-      errorMessage: null,
-      logs: ["Frame extraction scaffold executed. FFmpeg implementation lands in the next slice."],
-      dataPatch: {},
-    };
+    const timestampInput = readTextInput(inputs, "timestamp") || "00:00:01";
+    const asset = await materializeAssetInput(videoUrl, `${node.id}-source`);
+    const outputPath = `${asset.tempDir}\\${node.id}-frame.jpg`;
+
+    try {
+      let seekTime = timestampInput;
+
+      if (timestampInput.endsWith("%")) {
+        const percentage = Number.parseFloat(timestampInput.slice(0, -1));
+        const duration = await getVideoDurationInSeconds(asset.inputPath);
+
+        if (duration && Number.isFinite(percentage)) {
+          seekTime = `${Math.max((duration * percentage) / 100, 0.1)}`;
+        } else {
+          seekTime = "1";
+        }
+      }
+
+      await runFfmpeg([
+        "-y",
+        "-ss",
+        seekTime,
+        "-i",
+        asset.inputPath,
+        "-frames:v",
+        "1",
+        outputPath,
+      ]);
+
+      const frameUrl = await storeProcessedAsset({
+        outputPath,
+        fileName: `${node.id}-frame.jpg`,
+        mimeType: "image/jpeg",
+      });
+      const outputs = { output: frameUrl };
+
+      return {
+        nodeId: node.id,
+        nodeKind: node.data.kind,
+        status: "success",
+        inputs,
+        outputs,
+        inputSummary: summarizeNodeInputs(inputs),
+        outputSummary: summarizeNodeOutputs(outputs),
+        errorMessage: null,
+        logs: ["Video frame extracted with FFmpeg inside Trigger.dev."],
+        dataPatch: {
+          imageUrl: frameUrl,
+        },
+      };
+    } finally {
+      await cleanupTempDir(asset.tempDir);
+    }
   },
 });
 
@@ -158,17 +238,42 @@ export const executeRunLlmNodeTask = task({
       throw new Error("LLM nodes require a user message.");
     }
 
+    const client = getGeminiClient();
+
+    if (!client) {
+      throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is required to run LLM nodes.");
+    }
+
+    const systemPrompt = readTextInput(inputs, "system_prompt");
+    const model = client.getGenerativeModel({
+      model: node.data.model || "gemini-2.5-flash",
+      ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+    });
+    const imageSources = Array.isArray(inputs.images)
+      ? inputs.images.filter((value): value is string => Boolean(value))
+      : inputs.images
+        ? [inputs.images]
+        : [];
+    const imageParts = await Promise.all(
+      imageSources.map((imageSource) => imageSourceToGeminiPart(imageSource)),
+    );
+    const response = await model.generateContent([userMessage, ...imageParts]);
+    const text = response.response.text().trim();
+    const outputs = { output: text };
+
     return {
       nodeId: node.id,
       nodeKind: node.data.kind,
       status: "success",
       inputs,
-      outputs: { output: node.data.result || "LLM execution scaffold completed." },
+      outputs,
       inputSummary: summarizeNodeInputs(inputs),
-      outputSummary: node.data.result || "LLM execution scaffold completed.",
+      outputSummary: summarizeNodeOutputs(outputs),
       errorMessage: null,
-      logs: ["LLM execution scaffold completed. Gemini integration lands in the next slice."],
-      dataPatch: {},
+      logs: ["Gemini response generated via Trigger.dev."],
+      dataPatch: {
+        result: text,
+      },
     };
   },
 });
@@ -200,6 +305,30 @@ export const executeWorkflowTask = task({
 
     try {
       for (const batch of batches) {
+        workingNodes = workingNodes.map((node) =>
+          batch.some((candidate) => candidate.id === node.id)
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: "running",
+                },
+              }
+            : node,
+        );
+
+        await updateWorkflowGraphRecord({
+          workflowId: payload.workflowId,
+          userId: payload.userId,
+          name: payload.workflow.name,
+          description: payload.workflow.description,
+          graph: {
+            nodes: workingNodes,
+            edges: payload.workflow.edges,
+            viewport: payload.workflow.viewport,
+          },
+        });
+
         const batchResults = await Promise.all(
           batch.map(async (node) => {
             const inputs = buildNodeInputs(node, payload.workflow.edges, outputsByNodeId);
