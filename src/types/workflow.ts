@@ -51,4 +51,5 @@ export type WorkflowNodeRun = {
   inputSummary: string;
   outputSummary: string;
   errorMessage: string | null;
+  logs: string[];
 };

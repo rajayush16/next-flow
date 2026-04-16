@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Clock3, LoaderCircle } from "lucide-react";
+import { ChevronDown, Clock3, LoaderCircle, Logs, Workflow } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useWorkflowStore } from "@/store/workflow-store";
@@ -12,6 +12,12 @@ const statusStyles = {
   running: "bg-violet-500/18 text-violet-100",
   idle: "bg-white/8 text-white/50",
   queued: "bg-sky-500/16 text-sky-100",
+};
+
+const runTargetLabels = {
+  full: "Full workflow",
+  selected: "Selected nodes",
+  single: "Single node",
 };
 
 export function HistoryPanel() {
@@ -70,6 +76,15 @@ export function HistoryPanel() {
                     <Clock3 className="h-3.5 w-3.5" />
                     {run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "In progress"}
                   </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/28">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/8 px-2.5 py-1">
+                      <Workflow className="h-3 w-3" />
+                      {runTargetLabels[run.target]}
+                    </span>
+                    <span className="rounded-full border border-white/8 px-2.5 py-1">
+                      {run.scopeNodeIds.length} node{run.scopeNodeIds.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
                 </div>
 
                 <ChevronDown
@@ -88,16 +103,31 @@ export function HistoryPanel() {
                       className="rounded-2xl border border-white/6 bg-black/18 p-3"
                     >
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-white">
-                          {nodeRun.nodeId}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-white/44">
-                          {nodeRun.status === "running" ? (
-                            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                          ) : null}
-                          {nodeRun.durationMs
-                            ? `${(nodeRun.durationMs / 1000).toFixed(1)}s`
-                            : "pending"}
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            {nodeRun.nodeId}
+                          </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/28">
+                            {nodeRun.nodeKind}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
+                              statusStyles[nodeRun.status],
+                            )}
+                          >
+                            {nodeRun.status}
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-white/44">
+                            {nodeRun.status === "running" ? (
+                              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                            ) : null}
+                            {nodeRun.durationMs
+                              ? `${(nodeRun.durationMs / 1000).toFixed(1)}s`
+                              : "pending"}
+                          </div>
                         </div>
                       </div>
                       <p className="text-xs leading-5 text-white/48">
@@ -106,6 +136,24 @@ export function HistoryPanel() {
                       <p className="mt-1 text-xs leading-5 text-white/58">
                         Output: {nodeRun.outputSummary}
                       </p>
+                      {nodeRun.logs.length > 0 ? (
+                        <div className="mt-2 rounded-2xl border border-white/6 bg-white/[0.02] p-3">
+                          <p className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-white/32">
+                            <Logs className="h-3 w-3" />
+                            Logs
+                          </p>
+                          <div className="space-y-1.5">
+                            {nodeRun.logs.map((log, index) => (
+                              <p
+                                key={`${nodeRun.id}-log-${index}`}
+                                className="text-xs leading-5 text-white/42"
+                              >
+                                {log}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                       {nodeRun.errorMessage ? (
                         <p className="mt-2 text-xs leading-5 text-rose-200/90">
                           Error: {nodeRun.errorMessage}

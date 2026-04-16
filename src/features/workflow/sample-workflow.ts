@@ -311,6 +311,7 @@ export const sampleWorkflowRuns: WorkflowRun[] = [
         inputSummary: "headphones.webp",
         outputSummary: "Cropped product image uploaded to Transloadit",
         errorMessage: null,
+        logs: ["Image cropped with FFmpeg inside Trigger.dev."],
       },
       {
         id: "node-run-2",
@@ -321,6 +322,7 @@ export const sampleWorkflowRuns: WorkflowRun[] = [
         inputSummary: "Marketing copy prompt + cropped image",
         outputSummary: "Awaiting Gemini response",
         errorMessage: null,
+        logs: ["Queued in Trigger.dev.", "Waiting for Gemini response."],
       },
     ],
   },
@@ -343,6 +345,7 @@ export const sampleWorkflowRuns: WorkflowRun[] = [
         inputSummary: "Product photo",
         outputSummary: "https://cdn.transloadit.com/cropped-image.webp",
         errorMessage: null,
+        logs: ["Image cropped with FFmpeg inside Trigger.dev."],
       },
       {
         id: "node-run-4",
@@ -353,6 +356,7 @@ export const sampleWorkflowRuns: WorkflowRun[] = [
         inputSummary: "Prompt + image",
         outputSummary: "No output",
         errorMessage: "Missing Gemini API key in environment.",
+        logs: ["Gemini task started.", "Missing GOOGLE_GENERATIVE_AI_API_KEY."],
       },
     ],
   },
@@ -376,6 +380,7 @@ export const sampleWorkflowRuns: WorkflowRun[] = [
         outputSummary:
           "Meet the foldable noise-cancelling headphones that keep your soundtrack sharp from boarding gate to deep-work sprint.",
         errorMessage: null,
+        logs: ["Gemini response generated via Trigger.dev."],
       },
     ],
   },

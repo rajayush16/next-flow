@@ -40,6 +40,7 @@ function mapNodeRun(nodeRun: {
   inputs: unknown;
   outputs: unknown;
   errorMessage: string | null;
+  logs: unknown;
 }): WorkflowNodeRun {
   return {
     id: nodeRun.id,
@@ -56,6 +57,9 @@ function mapNodeRun(nodeRun: {
         ? nodeRun.outputs
         : JSON.stringify(nodeRun.outputs),
     errorMessage: nodeRun.errorMessage,
+    logs: Array.isArray(nodeRun.logs)
+      ? nodeRun.logs.filter((entry): entry is string => typeof entry === "string")
+      : [],
   };
 }
 
@@ -77,6 +81,7 @@ function mapWorkflowRun(run: {
     inputs: unknown;
     outputs: unknown;
     errorMessage: string | null;
+    logs: unknown;
   }>;
 }): WorkflowRun {
   return {
