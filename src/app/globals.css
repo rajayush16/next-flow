@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --muted: #18181b;
-  --muted-foreground: #a1a1aa;
-  --border: #27272a;
+  --background: #050507;
+  --foreground: #f8f7fb;
+  --muted: #111116;
+  --muted-foreground: #8b8b98;
+  --border: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
@@ -30,6 +31,10 @@ body {
   font-family: var(--font-sans);
 }
 
+body {
+  margin: 0;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -45,4 +50,61 @@ select {
 ::selection {
   background: #27272a;
   color: #fafafa;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.nextflow-react-flow .react-flow__renderer {
+  background:
+    radial-gradient(circle at top, rgba(124, 58, 237, 0.14), transparent 28%),
+    radial-gradient(circle at bottom, rgba(255, 255, 255, 0.05), transparent 30%),
+    #07070a;
+}
+
+.nextflow-react-flow .react-flow__edge-path {
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 10px rgba(124, 58, 237, 0.34));
+}
+
+.nextflow-react-flow .react-flow__controls-button {
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.68);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nextflow-react-flow .react-flow__controls-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.nextflow-node-running::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 29px;
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.08),
+    0 0 42px rgba(124, 58, 237, 0.34);
+  animation: nextflow-pulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes nextflow-pulse {
+  0%,
+  100% {
+    opacity: 0.62;
+    box-shadow:
+      0 0 0 1px rgba(124, 58, 237, 0.1),
+      0 0 42px rgba(124, 58, 237, 0.18);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgba(124, 58, 237, 0.26),
+      0 0 56px rgba(124, 58, 237, 0.42);
+  }
 }
