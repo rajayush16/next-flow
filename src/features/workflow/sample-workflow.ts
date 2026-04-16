@@ -79,6 +79,8 @@ const nodes: WorkflowEditorNode[] = [
       yPercent: "10",
       widthPercent: "80",
       heightPercent: "80",
+      previewUrl:
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=720&q=80",
     },
   },
   {
@@ -140,6 +142,8 @@ const nodes: WorkflowEditorNode[] = [
       ],
       outputHandles: [{ id: "output", label: "Frame", type: "image" }],
       timestamp: "50%",
+      previewUrl:
+        "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=720&q=80",
     },
   },
   {

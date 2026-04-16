@@ -19,7 +19,9 @@ import {
 import {
   Background,
   BackgroundVariant,
+  type Connection,
   Controls,
+  type Edge,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -30,21 +32,24 @@ import { EditorSidebar } from "@/components/layout/editor-sidebar";
 import { HistoryPanel } from "@/components/layout/history-panel";
 import { NextFlowLogo } from "@/components/ui/nextflow-logo";
 import { WorkflowNode } from "@/components/ui/workflow-node";
+import { canConnectNodes, wouldCreateCycle } from "@/features/nodes/node-utils";
 import { cn } from "@/lib/utils";
 import { useWorkflowStore } from "@/store/workflow-store";
+import type { WorkflowNodeKind } from "@/types/node";
 
 const nodeTypes = {
   workflowNode: WorkflowNode,
 };
 
 function FlowCanvas() {
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const viewport = useWorkflowStore((state) => state.viewport);
   const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
+  const addNodeAtPosition = useWorkflowStore((state) => state.addNodeAtPosition);
   const setViewport = useWorkflowStore((state) => state.setViewport);
   const setSelectedNodeIds = useWorkflowStore((state) => state.setSelectedNodeIds);
   const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId);
@@ -52,6 +57,19 @@ function FlowCanvas() {
   const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
+  const isValidConnection = (connection: Edge | Connection) => {
+    const normalizedConnection: Connection = {
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle ?? null,
+      targetHandle: connection.targetHandle ?? null,
+    };
+
+    return (
+      canConnectNodes(nodes, normalizedConnection) &&
+      !wouldCreateCycle(nodes, edges, normalizedConnection)
+    );
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,7 +115,30 @@ function FlowCanvas() {
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      isValidConnection={isValidConnection}
       onMoveEnd={(_, currentViewport) => setViewport(currentViewport)}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        const kind = event.dataTransfer.getData(
+          "application/nextflow-node-kind",
+        ) as WorkflowNodeKind;
+
+        if (!kind) {
+          return;
+        }
+
+        addNodeAtPosition(
+          kind,
+          screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+          }),
+        );
+      }}
       onSelectionChange={({ nodes: selectedNodes }) =>
         {
           const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
@@ -113,6 +154,7 @@ function FlowCanvas() {
       minZoom={0.35}
       maxZoom={1.2}
       className="nextflow-react-flow"
+      connectionLineStyle={{ stroke: "#8b5cf6", strokeWidth: 2 }}
       proOptions={{ hideAttribution: true }}
     >
       <Background
@@ -372,7 +414,7 @@ export function WorkspaceShell({
                     ? `${isPending ? " " : ""}${selectedNodeIds.length} node${selectedNodeIds.length === 1 ? "" : "s"} selected`
                     : isPending
                       ? ""
-                      : "React Flow canvas, protected routes, and Krea-inspired shell"}
+                      : "Drag from the sidebar or click to add nodes. Invalid links are blocked before they connect."}
                 </p>
               </div>
             </div>

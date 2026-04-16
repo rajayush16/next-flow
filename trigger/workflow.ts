@@ -147,7 +147,7 @@ export const executeCropImageNodeTask = task({
         errorMessage: null,
         logs: ["Image cropped with FFmpeg inside Trigger.dev."],
         dataPatch: {
-          imageUrl: croppedUrl,
+          previewUrl: croppedUrl,
         },
       };
     } finally {
@@ -216,7 +216,7 @@ export const executeExtractFrameNodeTask = task({
         errorMessage: null,
         logs: ["Video frame extracted with FFmpeg inside Trigger.dev."],
         dataPatch: {
-          imageUrl: frameUrl,
+          previewUrl: frameUrl,
         },
       };
     } finally {

@@ -57,6 +57,7 @@ type WorkflowStore = {
   onConnect: (connection: Connection) => void;
   updateNodeData: (nodeId: string, key: string, value: unknown) => void;
   addNode: (kind: WorkflowNodeKind) => void;
+  addNodeAtPosition: (kind: WorkflowNodeKind, position: { x: number; y: number }) => void;
   deleteNode: (nodeId: string) => void;
   setSelectedNodeId: (nodeId: string | null) => void;
   setSelectedNodeIds: (nodeIds: string[]) => void;
@@ -210,6 +211,18 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
             y: template.position.y + offset,
           }),
         ],
+      }),
+    );
+  },
+  addNodeAtPosition: (kind, position) => {
+    const template = findNodeTemplate(kind);
+    if (!template) {
+      return;
+    }
+
+    set((state) =>
+      commitSnapshot(state, {
+        nodes: [...state.nodes, createNodeFromTemplate(template, position)],
       }),
     );
   },

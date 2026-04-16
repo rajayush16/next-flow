@@ -361,41 +361,65 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
         ) : null}
 
         {data.kind === "crop-image" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <InputField
-              label="X %"
-              value={data.xPercent}
-              disabled={isInputConnected(id, "x_percent", edges)}
-              onChange={(value) => updateNodeData(id, "xPercent", value)}
-            />
-            <InputField
-              label="Y %"
-              value={data.yPercent}
-              disabled={isInputConnected(id, "y_percent", edges)}
-              onChange={(value) => updateNodeData(id, "yPercent", value)}
-            />
-            <InputField
-              label="Width %"
-              value={data.widthPercent}
-              disabled={isInputConnected(id, "width_percent", edges)}
-              onChange={(value) => updateNodeData(id, "widthPercent", value)}
-            />
-            <InputField
-              label="Height %"
-              value={data.heightPercent}
-              disabled={isInputConnected(id, "height_percent", edges)}
-              onChange={(value) => updateNodeData(id, "heightPercent", value)}
-            />
+          <div className="space-y-3">
+            {data.previewUrl ? (
+              <div className="rounded-[24px] border border-white/8 bg-[#131317] p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.previewUrl}
+                  alt="Cropped preview"
+                  className="h-32 w-full rounded-[18px] object-cover"
+                />
+              </div>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3">
+              <InputField
+                label="X %"
+                value={data.xPercent}
+                disabled={isInputConnected(id, "x_percent", edges)}
+                onChange={(value) => updateNodeData(id, "xPercent", value)}
+              />
+              <InputField
+                label="Y %"
+                value={data.yPercent}
+                disabled={isInputConnected(id, "y_percent", edges)}
+                onChange={(value) => updateNodeData(id, "yPercent", value)}
+              />
+              <InputField
+                label="Width %"
+                value={data.widthPercent}
+                disabled={isInputConnected(id, "width_percent", edges)}
+                onChange={(value) => updateNodeData(id, "widthPercent", value)}
+              />
+              <InputField
+                label="Height %"
+                value={data.heightPercent}
+                disabled={isInputConnected(id, "height_percent", edges)}
+                onChange={(value) => updateNodeData(id, "heightPercent", value)}
+              />
+            </div>
           </div>
         ) : null}
 
         {data.kind === "extract-frame" ? (
-          <InputField
-            label="Timestamp"
-            value={data.timestamp}
-            disabled={isInputConnected(id, "timestamp", edges)}
-            onChange={(value) => updateNodeData(id, "timestamp", value)}
-          />
+          <div className="space-y-3">
+            {data.previewUrl ? (
+              <div className="rounded-[24px] border border-white/8 bg-[#131317] p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.previewUrl}
+                  alt="Extracted frame preview"
+                  className="h-32 w-full rounded-[18px] object-cover"
+                />
+              </div>
+            ) : null}
+            <InputField
+              label="Timestamp"
+              value={data.timestamp}
+              disabled={isInputConnected(id, "timestamp", edges)}
+              onChange={(value) => updateNodeData(id, "timestamp", value)}
+            />
+          </div>
         ) : null}
       </div>
     </div>

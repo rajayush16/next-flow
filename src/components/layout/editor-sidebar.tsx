@@ -75,6 +75,10 @@ export function EditorSidebar() {
               key={template.kind}
               type="button"
               onClick={() => addNode(template.kind)}
+              onDragStart={(event) => {
+                event.dataTransfer.setData("application/nextflow-node-kind", template.kind);
+                event.dataTransfer.effectAllowed = "move";
+              }}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-[22px] border border-white/8 bg-white/[0.03] px-3 py-3 text-left transition hover:border-white/14 hover:bg-white/[0.055]",
                 sidebarCollapsed && "justify-center px-0",

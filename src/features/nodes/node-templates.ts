@@ -140,6 +140,7 @@ export function createNodeData(kind: WorkflowNodeKind) {
         yPercent: "0",
         widthPercent: "80",
         heightPercent: "80",
+        previewUrl: null,
       } satisfies CropImageNodeData;
     case "extract-frame":
       return {
@@ -155,6 +156,7 @@ export function createNodeData(kind: WorkflowNodeKind) {
         ],
         outputHandles: [{ id: "output", label: "Frame", type: "image" }],
         timestamp: "50%",
+        previewUrl: null,
       } satisfies ExtractFrameNodeData;
   }
 }

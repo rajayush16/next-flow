@@ -83,11 +83,13 @@ export type CropImageNodeData = BaseWorkflowNodeData & {
   yPercent: string;
   widthPercent: string;
   heightPercent: string;
+  previewUrl: string | null;
 };
 
 export type ExtractFrameNodeData = BaseWorkflowNodeData & {
   kind: "extract-frame";
   timestamp: string;
+  previewUrl: string | null;
 };
 
 export type WorkflowNodeData =
