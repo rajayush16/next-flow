@@ -203,3 +203,14 @@ export async function updateWorkflowAction(
 
   return mapWorkflowRecord(updatedWorkflow);
 }
+
+export async function deleteWorkflowAction(workflowId: string): Promise<void> {
+  const user = await getOrCreateAppUser();
+
+  await db.workflow.deleteMany({
+    where: {
+      id: workflowId,
+      userId: user.id,
+    },
+  });
+}

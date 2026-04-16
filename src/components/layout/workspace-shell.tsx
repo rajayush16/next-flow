@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   ChevronDown,
+  Download,
+  FolderInput,
   LoaderCircle,
   Plus,
   PanelLeftClose,
@@ -139,6 +141,9 @@ function FlowCanvas() {
 type WorkspaceShellProps = {
   isPending?: boolean;
   onCreateWorkflow?: () => void | Promise<void>;
+  onDeleteWorkflow?: () => void | Promise<void>;
+  onExportWorkflow?: () => void;
+  onImportWorkflow?: (file: File) => void | Promise<void>;
   onOpenWorkflow?: (workflowId: string) => void | Promise<void>;
   onResetToSample?: () => void | Promise<void>;
   onRunWorkflow?: (target: "single" | "selected" | "full") => void | Promise<void>;
@@ -147,12 +152,16 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({
   isPending = false,
+  onDeleteWorkflow,
   onCreateWorkflow,
+  onExportWorkflow,
+  onImportWorkflow,
   onOpenWorkflow,
   onResetToSample,
   onRunWorkflow,
   onSaveWorkflow,
 }: WorkspaceShellProps) {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
   const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
@@ -215,6 +224,21 @@ export function WorkspaceShell({
         </div>
 
         <div className="flex items-center gap-3">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) {
+                return;
+              }
+
+              void onImportWorkflow?.(file);
+              event.target.value = "";
+            }}
+          />
           <button
             type="button"
             onClick={undo}
@@ -235,10 +259,19 @@ export function WorkspaceShell({
           </button>
           <button
             type="button"
+            onClick={() => importInputRef.current?.click()}
             className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
           >
-            <PanelLeftClose className="h-4 w-4" />
-            Layout
+            <FolderInput className="h-4 w-4" />
+            Import
+          </button>
+          <button
+            type="button"
+            onClick={onExportWorkflow}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+          >
+            <Download className="h-4 w-4" />
+            Export
           </button>
           <button
             type="button"
@@ -267,6 +300,14 @@ export function WorkspaceShell({
               <Share2 className="h-4 w-4" />
             )}
             Save
+          </button>
+          <button
+            type="button"
+            onClick={onDeleteWorkflow}
+            className="flex h-11 items-center gap-2 rounded-full border border-rose-400/14 bg-rose-500/8 px-4 text-sm text-rose-100 transition hover:bg-rose-500/12"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+            Delete flow
           </button>
           <button
             type="button"
