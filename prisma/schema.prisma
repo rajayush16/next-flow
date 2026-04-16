@@ -6,3 +6,88 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum WorkflowRunStatus {
+  IDLE
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum WorkflowRunTarget {
+  SINGLE
+  SELECTED
+  FULL
+}
+
+enum WorkflowNodeKind {
+  TEXT
+  UPLOAD_IMAGE
+  UPLOAD_VIDEO
+  RUN_LLM
+  CROP_IMAGE
+  EXTRACT_FRAME
+}
+
+model AppUser {
+  id          String        @id @default(cuid())
+  clerkUserId String        @unique
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workflows   Workflow[]
+  workflowRuns WorkflowRun[]
+}
+
+model Workflow {
+  id          String         @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  graph       Json
+  viewport    Json
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        AppUser        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runs        WorkflowRun[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model WorkflowRun {
+  id           String            @id @default(cuid())
+  workflowId   String
+  userId       String
+  status       WorkflowRunStatus
+  target       WorkflowRunTarget
+  durationMs   Int?
+  startedAt    DateTime          @default(now())
+  finishedAt   DateTime?
+  scopeNodeIds Json
+  triggerRunId String?
+  workflow     Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user         AppUser           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodeRuns     WorkflowNodeRun[]
+
+  @@index([workflowId, startedAt(sort: Desc)])
+  @@index([userId, startedAt(sort: Desc)])
+}
+
+model WorkflowNodeRun {
+  id            String            @id @default(cuid())
+  workflowRunId String
+  nodeId        String
+  nodeKind      WorkflowNodeKind
+  status        WorkflowRunStatus
+  durationMs    Int?
+  startedAt     DateTime          @default(now())
+  finishedAt    DateTime?
+  inputs        Json
+  outputs       Json
+  errorMessage  String?
+  logs          Json?
+  workflowRun   WorkflowRun       @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  @@index([workflowRunId, startedAt(sort: Asc)])
+}
