@@ -1,6 +1,15 @@
 "use client";
 
-import { PanelLeftClose, Play, Share2, Sparkles } from "lucide-react";
+import { useEffect } from "react";
+import {
+  PanelLeftClose,
+  Play,
+  Redo2,
+  Share2,
+  Sparkles,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import {
   Background,
   BackgroundVariant,
@@ -8,6 +17,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
 } from "@xyflow/react";
 
 import { EditorSidebar } from "@/components/layout/editor-sidebar";
@@ -21,6 +31,7 @@ const nodeTypes = {
 };
 
 function FlowCanvas() {
+  const { fitView } = useReactFlow();
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const viewport = useWorkflowStore((state) => state.viewport);
@@ -29,6 +40,45 @@ function FlowCanvas() {
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const setViewport = useWorkflowStore((state) => state.setViewport);
   const setSelectedNodeIds = useWorkflowStore((state) => state.setSelectedNodeIds);
+  const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId);
+  const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
+  const deleteNode = useWorkflowStore((state) => state.deleteNode);
+  const undo = useWorkflowStore((state) => state.undo);
+  const redo = useWorkflowStore((state) => state.redo);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isUndo = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z";
+      const isRedo =
+        (event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === "y" ||
+          (event.shiftKey && event.key.toLowerCase() === "z"));
+
+      if (isUndo) {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      if (isRedo) {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === "INPUT" || activeTag === "TEXTAREA") {
+          return;
+        }
+
+        selectedNodeIds.forEach((nodeId) => deleteNode(nodeId));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteNode, redo, selectedNodeIds, undo]);
 
   return (
     <ReactFlow
@@ -42,8 +92,17 @@ function FlowCanvas() {
       onConnect={onConnect}
       onMoveEnd={(_, currentViewport) => setViewport(currentViewport)}
       onSelectionChange={({ nodes: selectedNodes }) =>
-        setSelectedNodeIds(selectedNodes.map((node) => node.id))
+        {
+          const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
+          setSelectedNodeIds(nextSelectedNodeIds);
+          setSelectedNodeId(nextSelectedNodeIds[0] ?? null);
+        }
       }
+      deleteKeyCode={null}
+      multiSelectionKeyCode={["Meta", "Control"]}
+      onInit={() => {
+        void fitView({ duration: 400, padding: 0.14 });
+      }}
       minZoom={0.35}
       maxZoom={1.2}
       className="nextflow-react-flow"
@@ -73,6 +132,13 @@ function FlowCanvas() {
 }
 
 export function WorkspaceShell() {
+  const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
+  const deleteNode = useWorkflowStore((state) => state.deleteNode);
+  const undo = useWorkflowStore((state) => state.undo);
+  const redo = useWorkflowStore((state) => state.redo);
+  const canUndo = useWorkflowStore((state) => state.canUndo);
+  const canRedo = useWorkflowStore((state) => state.canRedo);
+
   return (
     <div className="flex min-h-screen flex-col bg-[#050507] text-white">
       <header className="flex items-center justify-between border-b border-white/6 px-6 py-4">
@@ -91,6 +157,24 @@ export function WorkspaceShell() {
         <div className="flex items-center gap-3">
           <button
             type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <Undo2 className="h-4 w-4" />
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <Redo2 className="h-4 w-4" />
+            Redo
+          </button>
+          <button
+            type="button"
             className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
           >
             <PanelLeftClose className="h-4 w-4" />
@@ -102,6 +186,15 @@ export function WorkspaceShell() {
           >
             <Share2 className="h-4 w-4" />
             Export
+          </button>
+          <button
+            type="button"
+            onClick={() => selectedNodeIds.forEach((nodeId) => deleteNode(nodeId))}
+            disabled={selectedNodeIds.length === 0}
+            className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
           </button>
           <button
             type="button"
@@ -127,7 +220,9 @@ export function WorkspaceShell() {
                   Workflow Builder
                 </p>
                 <p className="text-sm text-white/58">
-                  React Flow canvas, protected routes, and Krea-inspired shell
+                  {selectedNodeIds.length > 0
+                    ? `${selectedNodeIds.length} node${selectedNodeIds.length === 1 ? "" : "s"} selected`
+                    : "React Flow canvas, protected routes, and Krea-inspired shell"}
                 </p>
               </div>
             </div>

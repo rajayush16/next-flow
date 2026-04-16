@@ -31,6 +31,12 @@ import type {
 } from "@/types/node";
 import type { WorkflowRun } from "@/types/workflow";
 
+type WorkflowSnapshot = {
+  nodes: WorkflowEditorNode[];
+  edges: Edge[];
+  viewport: Viewport;
+};
+
 type WorkflowStore = {
   nodes: WorkflowEditorNode[];
   edges: Edge[];
@@ -40,6 +46,8 @@ type WorkflowStore = {
   selectedNodeId: string | null;
   selectedNodeIds: string[];
   sidebarCollapsed: boolean;
+  past: WorkflowSnapshot[];
+  future: WorkflowSnapshot[];
   onNodesChange: OnNodesChange<WorkflowEditorNode>;
   onEdgesChange: OnEdgesChange<Edge>;
   onConnect: (connection: Connection) => void;
@@ -51,6 +59,10 @@ type WorkflowStore = {
   setActiveRunId: (runId: string | null) => void;
   setViewport: (viewport: Viewport) => void;
   toggleSidebar: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
 function updateNode<T extends WorkflowEditorNode[]>(
@@ -59,6 +71,39 @@ function updateNode<T extends WorkflowEditorNode[]>(
   updater: (node: WorkflowEditorNode) => WorkflowEditorNode,
 ) {
   return nodes.map((node) => (node.id === nodeId ? updater(node) : node)) as T;
+}
+
+function cloneSnapshot(snapshot: WorkflowSnapshot): WorkflowSnapshot {
+  return structuredClone(snapshot);
+}
+
+function currentSnapshot(state: Pick<WorkflowStore, "nodes" | "edges" | "viewport">) {
+  return cloneSnapshot({
+    nodes: state.nodes,
+    edges: state.edges,
+    viewport: state.viewport,
+  });
+}
+
+function commitSnapshot(
+  state: WorkflowStore,
+  next: Partial<WorkflowSnapshot>,
+): Pick<WorkflowStore, "nodes" | "edges" | "viewport" | "past" | "future" | "canUndo" | "canRedo"> {
+  const snapshot = currentSnapshot(state);
+  const nodes = next.nodes ?? state.nodes;
+  const edges = next.edges ?? state.edges;
+  const viewport = next.viewport ?? state.viewport;
+  const past = [...state.past, snapshot].slice(-50);
+
+  return {
+    nodes,
+    edges,
+    viewport,
+    past,
+    future: [],
+    canUndo: past.length > 0,
+    canRedo: false,
+  };
 }
 
 export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
@@ -70,15 +115,21 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   selectedNodeId: null,
   selectedNodeIds: [],
   sidebarCollapsed: false,
+  past: [],
+  future: [],
+  canUndo: false,
+  canRedo: false,
   onNodesChange: (changes: NodeChange<WorkflowEditorNode>[]) => {
-    set((state) => ({
-      nodes: applyNodeChanges(changes, state.nodes),
-    }));
+    set((state) => {
+      const nextNodes = applyNodeChanges(changes, state.nodes);
+      return commitSnapshot(state, { nodes: nextNodes });
+    });
   },
   onEdgesChange: (changes: EdgeChange<Edge>[]) => {
-    set((state) => ({
-      edges: applyEdgeChanges(changes, state.edges),
-    }));
+    set((state) => {
+      const nextEdges = applyEdgeChanges(changes, state.edges);
+      return commitSnapshot(state, { edges: nextEdges });
+    });
   },
   onConnect: (connection) => {
     const { nodes, edges } = get();
@@ -91,28 +142,32 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       return;
     }
 
-    set({
-      edges: addEdge(
-        {
-          ...connection,
-          animated: true,
-          style: { stroke: "#7c3aed", strokeWidth: 2 },
-          className: "nextflow-edge",
-        },
-        edges,
-      ),
-    });
+    set((state) =>
+      commitSnapshot(state, {
+        edges: addEdge(
+          {
+            ...connection,
+            animated: true,
+            style: { stroke: "#7c3aed", strokeWidth: 2 },
+            className: "nextflow-edge",
+          },
+          edges,
+        ),
+      }),
+    );
   },
   updateNodeData: (nodeId, key, value) => {
-    set((state) => ({
-      nodes: updateNode(state.nodes, nodeId, (node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          [key]: value,
-        } as WorkflowNodeData,
-      })),
-    }));
+    set((state) =>
+      commitSnapshot(state, {
+        nodes: updateNode(state.nodes, nodeId, (node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            [key]: value,
+          } as WorkflowNodeData,
+        })),
+      }),
+    );
   },
   addNode: (kind) => {
     const template = findNodeTemplate(kind);
@@ -123,22 +178,26 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     const { nodes } = get();
     const offset = nodes.length * 24;
 
-    set({
-      nodes: [
-        ...nodes,
-        createNodeFromTemplate(template, {
-          x: template.position.x + offset,
-          y: template.position.y + offset,
-        }),
-      ],
-    });
+    set((state) =>
+      commitSnapshot(state, {
+        nodes: [
+          ...nodes,
+          createNodeFromTemplate(template, {
+            x: template.position.x + offset,
+            y: template.position.y + offset,
+          }),
+        ],
+      }),
+    );
   },
   deleteNode: (nodeId) => {
     set((state) => ({
-      nodes: state.nodes.filter((node) => node.id !== nodeId),
-      edges: state.edges.filter(
-        (edge) => edge.source !== nodeId && edge.target !== nodeId,
-      ),
+      ...commitSnapshot(state, {
+        nodes: state.nodes.filter((node) => node.id !== nodeId),
+        edges: state.edges.filter(
+          (edge) => edge.source !== nodeId && edge.target !== nodeId,
+        ),
+      }),
       selectedNodeId:
         state.selectedNodeId === nodeId ? null : state.selectedNodeId,
       selectedNodeIds: state.selectedNodeIds.filter((id) => id !== nodeId),
@@ -150,4 +209,47 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   setViewport: (viewport) => set({ viewport }),
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  undo: () => {
+    const { past, future } = get();
+    const previous = past.at(-1);
+
+    if (!previous) {
+      return;
+    }
+
+    set((state) => {
+      const snapshot = currentSnapshot(state);
+      const nextPast = state.past.slice(0, -1);
+
+      return {
+        ...previous,
+        past: nextPast,
+        future: [snapshot, ...future].slice(0, 50),
+        canUndo: nextPast.length > 0,
+        canRedo: true,
+      };
+    });
+  },
+  redo: () => {
+    const { future } = get();
+    const next = future[0];
+
+    if (!next) {
+      return;
+    }
+
+    set((state) => {
+      const snapshot = currentSnapshot(state);
+      const nextFuture = state.future.slice(1);
+      const past = [...state.past, snapshot].slice(-50);
+
+      return {
+        ...next,
+        past,
+        future: nextFuture,
+        canUndo: true,
+        canRedo: nextFuture.length > 0,
+      };
+    });
+  },
 }));
