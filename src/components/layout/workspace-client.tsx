@@ -93,11 +93,14 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
     return () => window.clearInterval(interval);
   }, [runs, setRuns, workflowId]);
 
-  async function handleCreateWorkflow() {
+  async function handleCreateWorkflow(input: {
+    name: string;
+    description: string | null;
+  }) {
     startTransition(async () => {
       const workflow = await saveWorkflowAction({
-        name: "Untitled workflow",
-        description: "New LLM workflow",
+        name: input.name,
+        description: input.description,
         graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
       });
       hydrateWorkflow(workflow, upsertWorkflowSummary(workflow, workflows), []);

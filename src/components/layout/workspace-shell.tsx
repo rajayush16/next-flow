@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "@clerk/nextjs";
 import {
+  CircleX,
   ChevronDown,
   Download,
   FolderInput,
@@ -207,7 +208,10 @@ function FlowCanvas() {
 
 type WorkspaceShellProps = {
   isPending?: boolean;
-  onCreateWorkflow?: () => void | Promise<void>;
+  onCreateWorkflow?: (input: {
+    name: string;
+    description: string | null;
+  }) => void | Promise<void>;
   onDeleteWorkflow?: () => void | Promise<void>;
   onExportWorkflow?: () => void;
   onImportWorkflow?: (file: File) => void | Promise<void>;
@@ -229,6 +233,9 @@ export function WorkspaceShell({
   onSaveWorkflow,
 }: WorkspaceShellProps) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newWorkflowName, setNewWorkflowName] = useState("");
+  const [newWorkflowDescription, setNewWorkflowDescription] = useState("");
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
   const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
@@ -242,6 +249,12 @@ export function WorkspaceShell({
   const workflows = useWorkflowStore((state) => state.workflows);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const setWorkflowMeta = useWorkflowStore((state) => state.setWorkflowMeta);
+
+  const resetCreateWorkflowForm = () => {
+    setNewWorkflowName("");
+    setNewWorkflowDescription("");
+    setIsCreateModalOpen(false);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-[#050507] text-white">
@@ -359,7 +372,7 @@ export function WorkspaceShell({
           </button>
           <button
             type="button"
-            onClick={onCreateWorkflow}
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
           >
             <Plus className="h-4 w-4" />
@@ -463,6 +476,84 @@ export function WorkspaceShell({
 
         <HistoryPanel />
       </main>
+
+      {isCreateModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[28px] border border-white/8 bg-[#0d0d10] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.55)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.32em] text-white/28">
+                  New Workflow
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                  Name your workflow
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-white/48">
+                  Create the workflow with a real name first, then start building on the canvas.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetCreateWorkflowForm}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/54 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                <CircleX className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/34">
+                  Workflow name
+                </span>
+                <input
+                  value={newWorkflowName}
+                  onChange={(event) => setNewWorkflowName(event.target.value)}
+                  placeholder="Product Launch Campaign"
+                  className="w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/34">
+                  Description
+                </span>
+                <textarea
+                  value={newWorkflowDescription}
+                  onChange={(event) => setNewWorkflowDescription(event.target.value)}
+                  placeholder="Describe what this workflow is intended to do."
+                  rows={4}
+                  className="w-full resize-none rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={resetCreateWorkflowForm}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={newWorkflowName.trim().length === 0 || isPending}
+                onClick={() => {
+                  void onCreateWorkflow?.({
+                    name: newWorkflowName.trim(),
+                    description: newWorkflowDescription.trim() || null,
+                  });
+                  resetCreateWorkflowForm();
+                }}
+                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-[#050507] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Create workflow
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
