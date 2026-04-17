@@ -33,8 +33,10 @@ export function EditorSidebar() {
   return (
     <aside
       className={cn(
-        "relative flex h-full flex-col rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300",
-        sidebarCollapsed ? "w-[88px]" : "w-[308px]",
+        "relative flex h-full min-h-[320px] w-full flex-col rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300 xl:min-h-[calc(100vh-148px)]",
+        sidebarCollapsed
+          ? "xl:w-[88px]"
+          : "xl:w-[280px] 2xl:w-[308px]",
       )}
     >
       <div className="mb-6 flex items-center justify-between">
