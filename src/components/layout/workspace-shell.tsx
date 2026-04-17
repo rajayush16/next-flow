@@ -42,7 +42,7 @@ const nodeTypes = {
 };
 
 function FlowCanvas() {
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const viewport = useWorkflowStore((state) => state.viewport);
@@ -54,6 +54,7 @@ function FlowCanvas() {
   const setSelectedNodeIds = useWorkflowStore((state) => state.setSelectedNodeIds);
   const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId);
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
+  const selectedNodeId = useWorkflowStore((state) => state.selectedNodeId);
   const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
@@ -69,6 +70,38 @@ function FlowCanvas() {
       canConnectNodes(nodes, normalizedConnection) &&
       !wouldCreateCycle(nodes, edges, normalizedConnection)
     );
+  };
+
+  const handleViewportChange = (_event: unknown, currentViewport: typeof viewport) => {
+    if (
+      viewport.x === currentViewport.x &&
+      viewport.y === currentViewport.y &&
+      viewport.zoom === currentViewport.zoom
+    ) {
+      return;
+    }
+
+    setViewport(currentViewport);
+  };
+
+  const handleSelectionChange = ({
+    nodes: selectedNodes,
+  }: {
+    nodes: Array<{ id: string }>;
+  }) => {
+    const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
+    const nextSelectedNodeId = nextSelectedNodeIds[0] ?? null;
+    const isSameSelection =
+      nextSelectedNodeIds.length === selectedNodeIds.length &&
+      nextSelectedNodeIds.every((nodeId, index) => nodeId === selectedNodeIds[index]);
+
+    if (!isSameSelection) {
+      setSelectedNodeIds(nextSelectedNodeIds);
+    }
+
+    if (selectedNodeId !== nextSelectedNodeId) {
+      setSelectedNodeId(nextSelectedNodeId);
+    }
   };
 
   useEffect(() => {
@@ -107,7 +140,6 @@ function FlowCanvas() {
 
   return (
     <ReactFlow
-      fitView
       nodeTypes={nodeTypes}
       nodes={nodes}
       edges={edges}
@@ -116,7 +148,7 @@ function FlowCanvas() {
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       isValidConnection={isValidConnection}
-      onMoveEnd={(_, currentViewport) => setViewport(currentViewport)}
+      onMoveEnd={handleViewportChange}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
@@ -139,18 +171,9 @@ function FlowCanvas() {
           }),
         );
       }}
-      onSelectionChange={({ nodes: selectedNodes }) =>
-        {
-          const nextSelectedNodeIds = selectedNodes.map((node) => node.id);
-          setSelectedNodeIds(nextSelectedNodeIds);
-          setSelectedNodeId(nextSelectedNodeIds[0] ?? null);
-        }
-      }
+      onSelectionChange={handleSelectionChange}
       deleteKeyCode={null}
       multiSelectionKeyCode={["Meta", "Control"]}
-      onInit={() => {
-        void fitView({ duration: 400, padding: 0.14 });
-      }}
       minZoom={0.35}
       maxZoom={1.2}
       className="nextflow-react-flow"
