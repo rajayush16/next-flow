@@ -19,9 +19,10 @@ export default function HomePage() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/workflow"
-            className="rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-white/90"
+            className="inline-flex min-w-[252px] items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold transition hover:bg-white/90"
+            style={{ color: "#050507" }}
           >
-            Open workflow builder
+            <span style={{ color: "#050507" }}>Open workflow builder</span>
           </Link>
           <Link
             href="/sign-in"
