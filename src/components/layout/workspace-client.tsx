@@ -1,27 +1,27 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 
 import { runWorkflowAction } from "@/server/actions/workflow-execution";
 import {
   deleteWorkflowAction,
+  getWorkflowAction,
   getOrCreateSampleWorkflowAction,
   saveWorkflowAction,
   updateWorkflowAction,
 } from "@/server/actions/workflow";
+import { listWorkflowRunsAction } from "@/server/actions/workflow-run";
 import type { Workflow } from "@/types/workflow";
 import { useWorkflowStore } from "@/store/workflow-store";
-import type { WorkflowBootstrap } from "@/types/workflow";
+import type { WorkflowBootstrap, WorkflowSummary } from "@/types/workflow";
 
 import { WorkspaceShell } from "./workspace-shell";
 
 export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const hydrateWorkflow = useWorkflowStore((state) => state.hydrateWorkflow);
+  const setRuns = useWorkflowStore((state) => state.setRuns);
   const workflowId = useWorkflowStore((state) => state.workflowId);
   const workflowName = useWorkflowStore((state) => state.workflowName);
   const workflowDescription = useWorkflowStore(
@@ -33,6 +33,39 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
   const runs = useWorkflowStore((state) => state.runs);
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
   const workflows = useWorkflowStore((state) => state.workflows);
+
+  const toWorkflowSummary = (workflow: Workflow): WorkflowSummary => ({
+    id: workflow.id,
+    name: workflow.name,
+    description: workflow.description,
+    createdAt: workflow.createdAt,
+    updatedAt: workflow.updatedAt,
+  });
+
+  const upsertWorkflowSummary = (
+    nextWorkflow: Workflow,
+    currentWorkflows: WorkflowSummary[],
+  ) => [toWorkflowSummary(nextWorkflow), ...currentWorkflows.filter((workflow) => workflow.id !== nextWorkflow.id)];
+
+  const replaceWorkflowUrl = (nextWorkflowId: string) => {
+    window.history.replaceState({}, "", `/workflow?workflowId=${encodeURIComponent(nextWorkflowId)}`);
+  };
+
+  const loadWorkflowState = async (nextWorkflowId: string) => {
+    const [workflow, nextRuns] = await Promise.all([
+      getWorkflowAction(nextWorkflowId),
+      listWorkflowRunsAction(nextWorkflowId),
+    ]);
+
+    if (!workflow) {
+      throw new Error("Workflow not found.");
+    }
+
+    return {
+      workflow,
+      runs: nextRuns,
+    };
+  };
 
   useEffect(() => {
     hydrateWorkflow(
@@ -52,11 +85,13 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
     }
 
     const interval = window.setInterval(() => {
-      router.refresh();
+      void listWorkflowRunsAction(workflowId).then((nextRuns) => {
+        setRuns(nextRuns);
+      });
     }, 2500);
 
     return () => window.clearInterval(interval);
-  }, [router, runs]);
+  }, [runs, setRuns, workflowId]);
 
   async function handleCreateWorkflow() {
     startTransition(async () => {
@@ -65,24 +100,22 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
         description: "New LLM workflow",
         graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
       });
-
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("workflowId", workflow.id);
-      router.push(`/workflow?${params.toString()}`);
-      router.refresh();
+      hydrateWorkflow(workflow, upsertWorkflowSummary(workflow, workflows), []);
+      replaceWorkflowUrl(workflow.id);
     });
   }
 
   async function handleOpenWorkflow(nextWorkflowId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("workflowId", nextWorkflowId);
-    router.push(`/workflow?${params.toString()}`);
-    router.refresh();
+    startTransition(async () => {
+      const nextState = await loadWorkflowState(nextWorkflowId);
+      hydrateWorkflow(nextState.workflow, workflows, nextState.runs);
+      replaceWorkflowUrl(nextWorkflowId);
+    });
   }
 
   async function handleSaveWorkflow() {
     startTransition(async () => {
-      await updateWorkflowAction(workflowId, {
+      const workflow = await updateWorkflowAction(workflowId, {
         name: workflowName,
         description: workflowDescription,
         graph: {
@@ -91,17 +124,16 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
           viewport,
         },
       });
-      router.refresh();
+      hydrateWorkflow(workflow, upsertWorkflowSummary(workflow, workflows), runs);
     });
   }
 
   async function handleResetToSample() {
     startTransition(async () => {
       const workflow = await getOrCreateSampleWorkflowAction();
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("workflowId", workflow.id);
-      router.push(`/workflow?${params.toString()}`);
-      router.refresh();
+      const nextRuns = await listWorkflowRunsAction(workflow.id);
+      hydrateWorkflow(workflow, upsertWorkflowSummary(workflow, workflows), nextRuns);
+      replaceWorkflowUrl(workflow.id);
     });
   }
 
@@ -114,7 +146,7 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
             ? selectedNodeIds.slice(0, 1)
             : selectedNodeIds;
 
-      await runWorkflowAction({
+      const run = await runWorkflowAction({
         workflowId,
         name: workflowName,
         description: workflowDescription,
@@ -126,26 +158,27 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
           viewport,
         },
       });
-      router.refresh();
+      setRuns([run, ...runs]);
     });
   }
 
   async function handleDeleteWorkflow() {
     startTransition(async () => {
       await deleteWorkflowAction(workflowId);
-
-      const fallbackWorkflow =
-        workflows.find((workflow) => workflow.id !== workflowId) ?? null;
+      const remainingWorkflows = workflows.filter((workflow) => workflow.id !== workflowId);
+      const fallbackWorkflow = remainingWorkflows[0] ?? null;
 
       if (fallbackWorkflow) {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("workflowId", fallbackWorkflow.id);
-        router.push(`/workflow?${params.toString()}`);
-      } else {
-        router.push("/workflow");
+        const nextState = await loadWorkflowState(fallbackWorkflow.id);
+        hydrateWorkflow(nextState.workflow, remainingWorkflows, nextState.runs);
+        replaceWorkflowUrl(fallbackWorkflow.id);
+        return;
       }
 
-      router.refresh();
+      const sampleWorkflow = await getOrCreateSampleWorkflowAction();
+      const sampleRuns = await listWorkflowRunsAction(sampleWorkflow.id);
+      hydrateWorkflow(sampleWorkflow, [toWorkflowSummary(sampleWorkflow)], sampleRuns);
+      replaceWorkflowUrl(sampleWorkflow.id);
     });
   }
 
@@ -200,10 +233,8 @@ export function WorkspaceClient({ bootstrap }: { bootstrap: WorkflowBootstrap })
 
     startTransition(async () => {
       const workflow = await saveWorkflowAction(importedWorkflow);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("workflowId", workflow.id);
-      router.push(`/workflow?${params.toString()}`);
-      router.refresh();
+      hydrateWorkflow(workflow, upsertWorkflowSummary(workflow, workflows), []);
+      replaceWorkflowUrl(workflow.id);
     });
   }
 

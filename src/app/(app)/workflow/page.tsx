@@ -18,12 +18,11 @@ export default async function WorkflowPage({ searchParams }: WorkflowPageProps) 
 
   const params = (await searchParams) ?? {};
   const workflows = await listWorkflowsAction();
-  const fallbackWorkflow = await getOrCreateSampleWorkflowAction();
   const requestedWorkflow = params.workflowId
     ? await getWorkflowAction(params.workflowId)
     : null;
   const activeWorkflow =
-    requestedWorkflow ?? fallbackWorkflow;
+    requestedWorkflow ?? (await getOrCreateSampleWorkflowAction());
   const runs = await listWorkflowRunsAction(activeWorkflow.id);
   const workflowSummaries = workflows.some(
     (workflow) => workflow.id === activeWorkflow.id,
