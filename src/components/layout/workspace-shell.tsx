@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { SignOutButton } from "@clerk/nextjs";
 import {
   ChevronDown,
   Download,
@@ -11,6 +12,7 @@ import {
   Play,
   Redo2,
   RotateCcw,
+  LogOut,
   Share2,
   Sparkles,
   Trash2,
@@ -289,6 +291,15 @@ export function WorkspaceShell({
         </div>
 
         <div className="flex items-center gap-3">
+          <SignOutButton>
+            <button
+              type="button"
+              className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </button>
+          </SignOutButton>
           <input
             ref={importInputRef}
             type="file"
