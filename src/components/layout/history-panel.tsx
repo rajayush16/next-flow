@@ -26,8 +26,8 @@ export function HistoryPanel() {
   const setActiveRunId = useWorkflowStore((state) => state.setActiveRunId);
 
   return (
-    <aside className="flex h-full min-h-[220px] w-full flex-col rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl 2xl:w-[360px]">
-      <div className="mb-6">
+    <aside className="flex h-full min-h-[220px] w-full flex-col overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl xl:min-h-0 2xl:w-[360px]">
+      <div className="mb-6 shrink-0">
         <p className="text-xs uppercase tracking-[0.32em] text-white/28">
           Workflow History
         </p>
@@ -36,7 +36,7 @@ export function HistoryPanel() {
         </h2>
       </div>
 
-      <div className="space-y-3 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {runs.map((run) => {
           const expanded = run.id === activeRunId;
 

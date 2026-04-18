@@ -33,13 +33,13 @@ export function EditorSidebar() {
   return (
     <aside
       className={cn(
-        "relative flex h-full min-h-[320px] w-full flex-col rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300 xl:min-h-[calc(100vh-148px)]",
+        "relative flex h-full min-h-[320px] w-full flex-col overflow-hidden rounded-[30px] border border-white/8 bg-[#0d0d10]/96 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl transition-all duration-300 xl:min-h-0",
         sidebarCollapsed
           ? "xl:w-[88px]"
           : "xl:w-[280px] 2xl:w-[308px]",
       )}
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 shrink-0 flex items-center justify-between">
         <div className={cn("transition-opacity", sidebarCollapsed && "opacity-0")}>
           <p className="text-xs uppercase tracking-[0.32em] text-white/28">
             Quick Access
@@ -62,13 +62,13 @@ export function EditorSidebar() {
       </div>
 
       {!sidebarCollapsed ? (
-        <div className="mb-5 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-sm text-white/40">
+        <div className="mb-5 shrink-0 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-sm text-white/40">
           <Search className="h-4 w-4" />
           Search nodes
         </div>
       ) : null}
 
-      <div className="space-y-2 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {workflowNodeTemplates.map((template) => {
           const Icon = iconMap[template.icon];
 
