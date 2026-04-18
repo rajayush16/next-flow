@@ -329,64 +329,64 @@ export const executeWorkflowTask = task({
           },
         });
 
-        const batchResults = await Promise.all(
-          batch.map(async (node) => {
-            const inputs = buildNodeInputs(node, payload.workflow.edges, outputsByNodeId);
-            const startedAt = Date.now();
-            const nodeRun = await createNodeRunRecord({
-              workflowRunId: payload.runId,
-              nodeId: node.id,
-              nodeKind: node.data.kind,
+        const batchResults: WorkflowNodeTaskResult[] = [];
+
+        for (const node of batch) {
+          const inputs = buildNodeInputs(node, payload.workflow.edges, outputsByNodeId);
+          const startedAt = Date.now();
+          const nodeRun = await createNodeRunRecord({
+            workflowRunId: payload.runId,
+            nodeId: node.id,
+            nodeKind: node.data.kind,
+            inputs,
+          });
+
+          try {
+            const result = await tasks.triggerAndWait(taskIdsByKind[node.data.kind], {
+              node,
               inputs,
             });
 
-            try {
-              const result = await tasks.triggerAndWait(taskIdsByKind[node.data.kind], {
-                node,
-                inputs,
-              });
-
-              if (!result.ok) {
-                throw result.error;
-              }
-
-              await completeNodeRunRecord({
-                nodeRunId: nodeRun.id,
-                status: result.output.status,
-                outputs: result.output.outputs,
-                errorMessage: result.output.errorMessage,
-                logs: result.output.logs,
-                durationMs: Date.now() - startedAt,
-              });
-
-              return result.output;
-            } catch (error) {
-              const failedResult: WorkflowNodeTaskResult = {
-                nodeId: node.id,
-                nodeKind: node.data.kind,
-                status: "failed",
-                inputs,
-                outputs: {},
-                inputSummary: summarizeNodeInputs(inputs),
-                outputSummary: "No output",
-                errorMessage: error instanceof Error ? error.message : "Unknown task failure.",
-                logs: ["Node task failed before producing a valid result."],
-                dataPatch: {},
-              };
-
-              await completeNodeRunRecord({
-                nodeRunId: nodeRun.id,
-                status: "failed",
-                outputs: {},
-                errorMessage: failedResult.errorMessage,
-                logs: failedResult.logs,
-                durationMs: Date.now() - startedAt,
-              });
-
-              return failedResult;
+            if (!result.ok) {
+              throw result.error;
             }
-          }),
-        );
+
+            await completeNodeRunRecord({
+              nodeRunId: nodeRun.id,
+              status: result.output.status,
+              outputs: result.output.outputs,
+              errorMessage: result.output.errorMessage,
+              logs: result.output.logs,
+              durationMs: Date.now() - startedAt,
+            });
+
+            batchResults.push(result.output);
+          } catch (error) {
+            const failedResult: WorkflowNodeTaskResult = {
+              nodeId: node.id,
+              nodeKind: node.data.kind,
+              status: "failed",
+              inputs,
+              outputs: {},
+              inputSummary: summarizeNodeInputs(inputs),
+              outputSummary: "No output",
+              errorMessage: error instanceof Error ? error.message : "Unknown task failure.",
+              logs: ["Node task failed before producing a valid result."],
+              dataPatch: {},
+            };
+
+            await completeNodeRunRecord({
+              nodeRunId: nodeRun.id,
+              status: "failed",
+              outputs: {},
+              errorMessage: failedResult.errorMessage,
+              logs: failedResult.logs,
+              durationMs: Date.now() - startedAt,
+            });
+
+            batchResults.push(failedResult);
+          }
+        }
 
         for (const result of batchResults) {
           nodeResults.push(result);

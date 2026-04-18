@@ -261,7 +261,7 @@ export function WorkspaceShell({
     <div className="flex h-dvh overflow-hidden bg-[#050507] text-white">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="shrink-0 border-b border-white/6 px-4 py-4 xl:px-6">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_360px] 2xl:items-start">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[308px_minmax(0,1fr)_360px] 2xl:items-start">
             <div className="flex min-w-0 items-start gap-4">
               <NextFlowLogo />
               <div className="min-w-0 flex-1 pt-1">
@@ -275,13 +275,14 @@ export function WorkspaceShell({
                   }
                   className="mt-2 w-full min-w-0 bg-transparent text-xl font-semibold tracking-tight text-white outline-none"
                 />
-                <input
+                <textarea
                   value={workflowDescription ?? ""}
                   onChange={(event) =>
                     setWorkflowMeta(workflowName, event.target.value || null)
                   }
                   placeholder="Describe this workflow"
-                  className="mt-2 w-full bg-transparent text-sm text-white/42 outline-none placeholder:text-white/22"
+                  rows={2}
+                  className="mt-2 max-h-16 w-full resize-none overflow-y-auto bg-transparent text-sm leading-6 text-white/42 outline-none placeholder:text-white/22"
                 />
               </div>
             </div>

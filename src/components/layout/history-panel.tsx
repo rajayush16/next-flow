@@ -20,6 +20,78 @@ const runTargetLabels = {
   single: "Single node",
 };
 
+function parseSummary(summary: string) {
+  if (!summary.trim()) {
+    return [];
+  }
+
+  return summary.split(" | ").map((segment) => {
+    const separatorIndex = segment.indexOf(": ");
+
+    if (separatorIndex === -1) {
+      return {
+        label: null,
+        value: segment,
+      };
+    }
+
+    return {
+      label: segment.slice(0, separatorIndex),
+      value: segment.slice(separatorIndex + 2),
+    };
+  });
+}
+
+function SummaryBlock({
+  label,
+  summary,
+  tone,
+}: {
+  label: string;
+  summary: string;
+  tone: "input" | "output";
+}) {
+  const entries = parseSummary(summary);
+
+  return (
+    <div className="mt-2 rounded-2xl border border-white/6 bg-white/[0.02] p-3">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-white/32">
+        {label}
+      </p>
+      <div className="space-y-2">
+        {entries.length > 0 ? (
+          entries.map((entry, index) => (
+            <div key={`${label}-${index}`} className="space-y-1">
+              {entry.label ? (
+                <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
+                  {entry.label.replaceAll("_", " ")}
+                </p>
+              ) : null}
+              <p
+                className={cn(
+                  "whitespace-pre-wrap break-words text-xs leading-6",
+                  tone === "input" ? "text-white/50" : "text-white/64",
+                )}
+              >
+                {entry.value}
+              </p>
+            </div>
+          ))
+        ) : (
+          <p
+            className={cn(
+              "whitespace-pre-wrap break-words text-xs leading-6",
+              tone === "input" ? "text-white/50" : "text-white/64",
+            )}
+          >
+            {summary}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function HistoryPanel() {
   const runs = useWorkflowStore((state) => state.runs);
   const activeRunId = useWorkflowStore((state) => state.activeRunId);
@@ -130,12 +202,16 @@ export function HistoryPanel() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-xs leading-5 text-white/48">
-                        Input: {nodeRun.inputSummary}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-white/58">
-                        Output: {nodeRun.outputSummary}
-                      </p>
+                      <SummaryBlock
+                        label="Input"
+                        summary={nodeRun.inputSummary}
+                        tone="input"
+                      />
+                      <SummaryBlock
+                        label="Output"
+                        summary={nodeRun.outputSummary}
+                        tone="output"
+                      />
                       {nodeRun.logs.length > 0 ? (
                         <div className="mt-2 rounded-2xl border border-white/6 bg-white/[0.02] p-3">
                           <p className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-white/32">
