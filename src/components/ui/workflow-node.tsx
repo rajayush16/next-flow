@@ -47,11 +47,11 @@ function InputField({
   placeholder?: string;
 }) {
   const className =
-    "w-full rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-white/88 outline-none transition placeholder:text-white/20 disabled:border-white/[0.03] disabled:bg-white/[0.02] disabled:text-white/28";
+    "type-input w-full rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2 text-white/88 outline-none transition placeholder:text-white/20 disabled:border-white/[0.03] disabled:bg-white/[0.02] disabled:text-white/28";
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-white/32">
+      <span className="type-eyebrow text-white/32">
         {label}
       </span>
       {multiline ? (
@@ -199,14 +199,14 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
             <Icon className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-tight text-white">
+            <p className="type-card-title text-white">
               {data.title}
             </p>
-            <p className="text-xs text-white/42">{data.subtitle}</p>
+            <p className="type-meta mt-0.5 text-white/46">{data.subtitle}</p>
           </div>
         </div>
 
-        <div className="rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.26em] text-white/45">
+        <div className="type-badge rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 uppercase text-white/45">
           {data.status}
         </div>
       </div>
@@ -252,24 +252,24 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30 transition hover:border-white/20 hover:text-white/54"
+                  className="type-body flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-white/30 transition hover:border-white/20 hover:text-white/54"
                 >
                   {uploadState.status === "uploading" ? "Uploading..." : "Upload image"}
                 </button>
               )}
             </div>
-            <div className="flex items-center justify-between gap-3 text-xs text-white/35">
+            <div className="type-meta flex items-center justify-between gap-3 text-white/38">
               <p>{data.fileName ?? "No file selected"}</p>
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
-                className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/58 transition hover:bg-white/[0.06] hover:text-white"
+                className="type-eyebrow rounded-full border border-white/10 px-3 py-1.5 text-white/58 transition hover:bg-white/[0.06] hover:text-white"
               >
                 Replace
               </button>
             </div>
             {uploadState.message ? (
-              <p className="text-[11px] leading-5 text-white/42">
+              <p className="type-meta text-white/46">
                 {uploadState.message}
               </p>
             ) : null}
@@ -306,24 +306,24 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
                 <button
                   type="button"
                   onClick={() => videoInputRef.current?.click()}
-                  className="flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-sm text-white/30 transition hover:border-white/20 hover:text-white/54"
+                  className="type-body flex h-36 w-full items-center justify-center rounded-[18px] border border-dashed border-white/12 text-white/30 transition hover:border-white/20 hover:text-white/54"
                 >
                   {uploadState.status === "uploading" ? "Uploading..." : "Upload video"}
                 </button>
               )}
             </div>
-            <div className="flex items-center justify-between gap-3 text-xs text-white/35">
+            <div className="type-meta flex items-center justify-between gap-3 text-white/38">
               <p>{data.fileName ?? "No file selected"}</p>
               <button
                 type="button"
                 onClick={() => videoInputRef.current?.click()}
-                className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-white/58 transition hover:bg-white/[0.06] hover:text-white"
+                className="type-eyebrow rounded-full border border-white/10 px-3 py-1.5 text-white/58 transition hover:bg-white/[0.06] hover:text-white"
               >
                 Replace
               </button>
             </div>
             {uploadState.message ? (
-              <p className="text-[11px] leading-5 text-white/42">
+              <p className="type-meta text-white/46">
                 {uploadState.message}
               </p>
             ) : null}
@@ -354,7 +354,7 @@ export function WorkflowNode({ id, data, selected = false }: WorkflowNodeProps) 
               placeholder="Required user message"
               onChange={(value) => updateNodeData(id, "userMessage", value)}
             />
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-3 text-sm leading-6 text-white/72">
+            <div className="type-body rounded-[24px] border border-white/8 bg-white/[0.03] p-3 text-white/72">
               {data.result || "Result renders inline on the node after execution."}
             </div>
           </>

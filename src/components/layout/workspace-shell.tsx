@@ -6,8 +6,10 @@ import {
   CircleX,
   ChevronDown,
   Download,
+  FilePenLine,
   FolderInput,
   LoaderCircle,
+  MoreHorizontal,
   Plus,
   PanelLeftClose,
   Play,
@@ -16,7 +18,6 @@ import {
   LogOut,
   Share2,
   Sparkles,
-  Trash2,
   Undo2,
 } from "lucide-react";
 import {
@@ -52,6 +53,7 @@ function FlowCanvas() {
   const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
   const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
   const onConnect = useWorkflowStore((state) => state.onConnect);
+  const onReconnect = useWorkflowStore((state) => state.onReconnect);
   const addNodeAtPosition = useWorkflowStore((state) => state.addNodeAtPosition);
   const setViewport = useWorkflowStore((state) => state.setViewport);
   const setSelectedNodeIds = useWorkflowStore((state) => state.setSelectedNodeIds);
@@ -146,10 +148,19 @@ function FlowCanvas() {
       nodeTypes={nodeTypes}
       nodes={nodes}
       edges={edges}
+      defaultEdgeOptions={{
+        interactionWidth: 28,
+        selectable: true,
+        focusable: true,
+        className: "nextflow-edge",
+      }}
       defaultViewport={viewport}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onReconnect={onReconnect}
+      edgesReconnectable
+      reconnectRadius={18}
       isValidConnection={isValidConnection}
       onMoveEnd={handleViewportChange}
       onDragOver={(event) => {
@@ -233,11 +244,15 @@ export function WorkspaceShell({
   onSaveWorkflow,
 }: WorkspaceShellProps) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditMetaModalOpen, setIsEditMetaModalOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState("");
   const [newWorkflowDescription, setNewWorkflowDescription] = useState("");
+  const [draftWorkflowName, setDraftWorkflowName] = useState("");
+  const [draftWorkflowDescription, setDraftWorkflowDescription] = useState("");
   const selectedNodeIds = useWorkflowStore((state) => state.selectedNodeIds);
-  const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
   const canUndo = useWorkflowStore((state) => state.canUndo);
@@ -251,29 +266,66 @@ export function WorkspaceShell({
   const setWorkflowMeta = useWorkflowStore((state) => state.setWorkflowMeta);
   const sidebarCollapsed = useWorkflowStore((state) => state.sidebarCollapsed);
 
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!overflowMenuRef.current?.contains(event.target as Node)) {
+        setIsOverflowOpen(false);
+      }
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
   const resetCreateWorkflowForm = () => {
     setNewWorkflowName("");
     setNewWorkflowDescription("");
     setIsCreateModalOpen(false);
   };
 
+  const openEditMetaModal = () => {
+    setDraftWorkflowName(workflowName);
+    setDraftWorkflowDescription(workflowDescription ?? "");
+    setIsEditMetaModalOpen(true);
+  };
+
+  const resetEditMetaForm = () => {
+    setDraftWorkflowName(workflowName);
+    setDraftWorkflowDescription(workflowDescription ?? "");
+    setIsEditMetaModalOpen(false);
+  };
+
+  const visibleActionClass =
+    "inline-flex h-11 items-center justify-center gap-2 rounded-full text-sm transition disabled:cursor-not-allowed disabled:opacity-35";
+  const subtleActionClass =
+    "bg-white/[0.02] text-white/56 hover:bg-white/[0.045] hover:text-white/84";
+  const workflowSubtitle = workflowDescription?.trim() || "Workflow canvas";
+
   return (
     <div className="flex h-dvh overflow-hidden bg-[#050507] text-white">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="shrink-0 border-b border-white/6 px-4 py-4 xl:px-6">
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[308px_minmax(0,1fr)_360px] 2xl:items-start">
-            <div className="flex min-w-0 items-start gap-4">
-              <NextFlowLogo />
-              <div className="min-w-0 flex-1 pt-1">
-                <p className="text-xs uppercase tracking-[0.32em] text-white/28">
-                  NextFlow
-                </p>
+        <header className="shrink-0 border-b border-white/4 px-6 py-5 xl:px-10 xl:py-5 2xl:px-12">
+          <div className="grid min-h-[76px] grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.86fr)_auto] xl:items-center xl:gap-10 2xl:gap-14">
+            <div className="flex min-w-0 items-center gap-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <NextFlowLogo className="h-8 w-8 border-0 bg-transparent" />
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <p className="type-eyebrow shrink-0 text-white/22">
+                    NextFlow
+                  </p>
+                  <span className="hidden h-1 w-1 rounded-full bg-white/14 sm:block" />
+                  <p className="type-eyebrow truncate text-white/14">
+                    Builder
+                  </p>
+                </div>
                 <input
                   value={workflowName}
                   onChange={(event) =>
                     setWorkflowMeta(event.target.value, workflowDescription)
                   }
-                  className="mt-2 w-full min-w-0 bg-transparent text-xl font-semibold tracking-tight text-white outline-none"
+                  className="type-card-title w-full min-w-0 bg-transparent text-[1.08rem] text-white outline-none placeholder:text-white/28 xl:text-[1.2rem]"
                 />
                 <textarea
                   value={workflowDescription ?? ""}
@@ -281,18 +333,19 @@ export function WorkspaceShell({
                     setWorkflowMeta(workflowName, event.target.value || null)
                   }
                   placeholder="Describe this workflow"
-                  rows={2}
-                  className="mt-2 max-h-16 w-full resize-none overflow-y-auto bg-transparent text-sm leading-6 text-white/42 outline-none placeholder:text-white/22"
+                  rows={1}
+                  className="type-meta h-6 w-full resize-none overflow-hidden bg-transparent text-white/34 outline-none placeholder:text-white/18"
                 />
+                <p className="sr-only">{workflowSubtitle}</p>
               </div>
             </div>
 
-            <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)] xl:items-start">
-              <div className="relative xl:max-w-[360px]">
+            <div className="min-w-0 xl:justify-self-center xl:w-full xl:max-w-[460px]">
+              <div className="relative">
                 <select
                   value={workflowId}
                   onChange={(event) => onOpenWorkflow?.(event.target.value)}
-                  className="w-full appearance-none rounded-full border border-white/10 bg-white/[0.03] px-4 py-3 pr-9 text-sm text-white/68 outline-none transition hover:bg-white/[0.06]"
+                  className="type-input h-12 w-full appearance-none rounded-full border border-white/6 bg-white/[0.03] px-6 pr-12 font-medium text-white/82 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition hover:bg-white/[0.045] focus:border-white/10"
                 >
                   {workflows.map((workflow) => (
                     <option
@@ -304,142 +357,186 @@ export function WorkspaceShell({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <SignOutButton>
-                  <button
-                    type="button"
-                    className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Log out
-                  </button>
-                </SignOutButton>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) {
-                      return;
-                    }
-
-                    void onImportWorkflow?.(file);
-                    event.target.value = "";
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={undo}
-                  disabled={!canUndo}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <Undo2 className="h-4 w-4" />
-                  Undo
-                </button>
-                <button
-                  type="button"
-                  onClick={redo}
-                  disabled={!canRedo}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <Redo2 className="h-4 w-4" />
-                  Redo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => importInputRef.current?.click()}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  <FolderInput className="h-4 w-4" />
-                  Import
-                </button>
-                <button
-                  type="button"
-                  onClick={onExportWorkflow}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  <Download className="h-4 w-4" />
-                  Export
-                </button>
-                <button
-                  type="button"
-                  onClick={onResetToSample}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Sample
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  New
-                </button>
-                <button
-                  type="button"
-                  onClick={onSaveWorkflow}
-                  className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  {isPending ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Share2 className="h-4 w-4" />
-                  )}
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={onDeleteWorkflow}
-                  className="flex h-11 items-center gap-2 rounded-full border border-rose-400/14 bg-rose-500/8 px-4 text-sm text-rose-100 transition hover:bg-rose-500/12"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                  Delete flow
-                </button>
+                <ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/32" />
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 2xl:justify-end">
+            <div className="flex flex-wrap items-center justify-start gap-2.5 sm:gap-3 xl:justify-end xl:pl-6">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+
+                  void onImportWorkflow?.(file);
+                  event.target.value = "";
+                }}
+              />
               <button
                 type="button"
-                onClick={() => selectedNodeIds.forEach((nodeId) => deleteNode(nodeId))}
-                disabled={selectedNodeIds.length === 0}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                onClick={() => setIsCreateModalOpen(true)}
+                  className={cn(visibleActionClass, subtleActionClass, "type-ui-label px-4")}
               >
-                <Trash2 className="h-4 w-4" />
-                Delete
+                <Plus className="h-4 w-4" />
+                New
               </button>
               <button
                 type="button"
-                onClick={() => onRunWorkflow?.(selectedNodeIds.length > 0 ? "single" : "full")}
-                className="flex h-11 items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-4 text-sm text-violet-100 transition hover:bg-violet-500/16"
+                onClick={onSaveWorkflow}
+                className={cn(
+                  visibleActionClass,
+                  "type-ui-label px-4.5 bg-white/[0.045] text-white/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-white/[0.07] hover:text-white",
+                )}
               >
-                <Play className="h-4 w-4 fill-current" />
-                {selectedNodeIds.length > 0 ? "Run node" : "Quick run"}
-              </button>
-              <button
-                type="button"
-                onClick={() => onRunWorkflow?.("selected")}
-                disabled={selectedNodeIds.length === 0}
-                className="flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm text-white/68 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-              >
-                <Play className="h-4 w-4 fill-current" />
-                Run selected
+                {isPending ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Share2 className="h-4 w-4" />
+                )}
+                Save
               </button>
               <button
                 type="button"
                 onClick={() => onRunWorkflow?.("full")}
-                className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-white/90"
+                className="type-ui-label ml-1 inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 font-semibold text-black shadow-[0_8px_24px_rgba(255,255,255,0.08)] transition hover:bg-white/92"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Run workflow
               </button>
+              <div className="relative" ref={overflowMenuRef}>
+                <button
+                  type="button"
+                  aria-expanded={isOverflowOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setIsOverflowOpen((current) => !current)}
+                  className={cn(visibleActionClass, subtleActionClass, "w-11 px-0")}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+                {isOverflowOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+14px)] z-30 w-[240px] rounded-[24px] border border-white/6 bg-[#0d0d10]/96 p-2.5 shadow-[0_24px_64px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+                    <div className="grid gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          undo();
+                        }}
+                        disabled={!canUndo}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                        Undo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          redo();
+                        }}
+                        disabled={!canRedo}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Redo2 className="h-4 w-4" />
+                        Redo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          openEditMetaModal();
+                        }}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                      >
+                        <FilePenLine className="h-4 w-4" />
+                        Edit details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          importInputRef.current?.click();
+                        }}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                      >
+                        <FolderInput className="h-4 w-4" />
+                        Import
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          onExportWorkflow?.();
+                        }}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          onResetToSample?.();
+                        }}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Sample
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          onRunWorkflow?.(selectedNodeIds.length > 0 ? "single" : "full");
+                        }}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                      >
+                        <Play className="h-4 w-4 fill-current" />
+                        Quick run
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          onRunWorkflow?.("selected");
+                        }}
+                        disabled={selectedNodeIds.length === 0}
+                        className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Play className="h-4 w-4 fill-current" />
+                        Run selected
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOverflowOpen(false);
+                          onDeleteWorkflow?.();
+                        }}
+                        className="type-ui-label mt-1 flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-rose-100/78 transition hover:bg-rose-500/[0.08]"
+                      >
+                        <PanelLeftClose className="h-4 w-4" />
+                        Delete flow
+                      </button>
+                      <SignOutButton>
+                        <button
+                          type="button"
+                          onClick={() => setIsOverflowOpen(false)}
+                          className="type-ui-label flex h-10 items-center gap-3 rounded-[16px] px-3.5 text-white/62 transition hover:bg-white/[0.045] hover:text-white"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Log out
+                        </button>
+                      </SignOutButton>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </header>
@@ -461,12 +558,12 @@ export function WorkspaceShell({
                 <Sparkles className="h-4 w-4 text-white/68" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-white/28">
+                <p className="type-eyebrow text-white/28">
                   Workflow Builder
                 </p>
                 <p
                   className={cn(
-                    "text-sm text-white/58",
+                    "type-meta text-white/58",
                     isPending && "text-violet-200",
                   )}
                 >
@@ -501,13 +598,13 @@ export function WorkspaceShell({
           <div className="w-full max-w-xl rounded-[28px] border border-white/8 bg-[#0d0d10] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.55)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-white/28">
+                <p className="type-eyebrow text-white/28">
                   New Workflow
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                <h2 className="type-page-title mt-2 text-white">
                   Name your workflow
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-white/48">
+                <p className="type-body mt-3 text-white/48">
                   Create the workflow with a real name first, then start building on the canvas.
                 </p>
               </div>
@@ -522,19 +619,19 @@ export function WorkspaceShell({
 
             <div className="mt-6 space-y-4">
               <label className="block">
-                <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/34">
+                <span className="type-eyebrow mb-2 block text-white/34">
                   Workflow name
                 </span>
                 <input
                   value={newWorkflowName}
                   onChange={(event) => setNewWorkflowName(event.target.value)}
                   placeholder="Product Launch Campaign"
-                  className="w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                  className="type-input w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-[11px] uppercase tracking-[0.24em] text-white/34">
+                <span className="type-eyebrow mb-2 block text-white/34">
                   Description
                 </span>
                 <textarea
@@ -542,7 +639,7 @@ export function WorkspaceShell({
                   onChange={(event) => setNewWorkflowDescription(event.target.value)}
                   placeholder="Describe what this workflow is intended to do."
                   rows={4}
-                  className="w-full resize-none rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                  className="type-input w-full resize-none rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
                 />
               </label>
             </div>
@@ -551,7 +648,7 @@ export function WorkspaceShell({
               <button
                 type="button"
                 onClick={resetCreateWorkflowForm}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+                className="type-ui-label rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-white/68 transition hover:bg-white/[0.06] hover:text-white"
               >
                 Cancel
               </button>
@@ -565,9 +662,87 @@ export function WorkspaceShell({
                   });
                   resetCreateWorkflowForm();
                 }}
-                className="rounded-full bg-white px-5 py-3 text-sm font-medium text-[#050507] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45"
+                className="type-ui-label rounded-full bg-white px-5 py-3 font-semibold text-[#050507] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Create workflow
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isEditMetaModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-[28px] border border-white/8 bg-[#0d0d10] p-6 shadow-[0_32px_90px_rgba(0,0,0,0.55)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="type-eyebrow text-white/28">
+                  Workflow Details
+                </p>
+                <h2 className="type-page-title mt-2 text-white">
+                  Edit title and description
+                </h2>
+                <p className="type-body mt-3 text-white/48">
+                  Update how this workflow appears in the navbar and selector.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetEditMetaForm}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/54 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                <CircleX className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="type-eyebrow mb-2 block text-white/34">
+                  Workflow name
+                </span>
+                <input
+                  value={draftWorkflowName}
+                  onChange={(event) => setDraftWorkflowName(event.target.value)}
+                  placeholder="Untitled workflow"
+                  className="type-input w-full rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                />
+              </label>
+
+              <label className="block">
+                <span className="type-eyebrow mb-2 block text-white/34">
+                  Description
+                </span>
+                <textarea
+                  value={draftWorkflowDescription}
+                  onChange={(event) => setDraftWorkflowDescription(event.target.value)}
+                  placeholder="New LLM workflow"
+                  rows={3}
+                  className="type-input w-full resize-none rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/22 focus:border-violet-400/40"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={resetEditMetaForm}
+                className="type-ui-label rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-white/68 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={draftWorkflowName.trim().length === 0}
+                onClick={() => {
+                  setWorkflowMeta(
+                    draftWorkflowName.trim(),
+                    draftWorkflowDescription.trim() || null,
+                  );
+                  setIsEditMetaModalOpen(false);
+                }}
+                className="type-ui-label rounded-full bg-white px-5 py-3 font-semibold text-[#050507] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Save details
               </button>
             </div>
           </div>

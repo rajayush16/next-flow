@@ -11,6 +11,7 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  reconnectEdge,
 } from "@xyflow/react";
 import { create } from "zustand";
 
@@ -55,6 +56,7 @@ type WorkflowStore = {
   onNodesChange: OnNodesChange<WorkflowEditorNode>;
   onEdgesChange: OnEdgesChange<Edge>;
   onConnect: (connection: Connection) => void;
+  onReconnect: (oldEdge: Edge, newConnection: Connection) => void;
   updateNodeData: (nodeId: string, key: string, value: unknown) => void;
   addNode: (kind: WorkflowNodeKind) => void;
   addNodeAtPosition: (kind: WorkflowNodeKind, position: { x: number; y: number }) => void;
@@ -180,6 +182,42 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       }),
     );
   },
+  onReconnect: (oldEdge, newConnection) => {
+    const { nodes, edges } = get();
+
+    if (!canConnectNodes(nodes, newConnection)) {
+      return;
+    }
+
+    const candidateEdges = reconnectEdge(oldEdge, newConnection, edges);
+    const normalizedConnection: Connection = {
+      source: newConnection.source,
+      target: newConnection.target,
+      sourceHandle: newConnection.sourceHandle ?? null,
+      targetHandle: newConnection.targetHandle ?? null,
+    };
+
+    const edgesWithoutReconnected = candidateEdges.filter((edge) => edge.id !== oldEdge.id);
+
+    if (wouldCreateCycle(nodes, edgesWithoutReconnected, normalizedConnection)) {
+      return;
+    }
+
+    set((state) =>
+      commitSnapshot(state, {
+        edges: reconnectEdge(oldEdge, newConnection, state.edges).map((edge) =>
+          edge.id === oldEdge.id
+            ? {
+                ...edge,
+                animated: true,
+                style: { stroke: "#7c3aed", strokeWidth: 2 },
+                className: "nextflow-edge",
+              }
+            : edge,
+        ),
+      }),
+    );
+  },
   updateNodeData: (nodeId, key, value) => {
     set((state) =>
       commitSnapshot(state, {
@@ -244,7 +282,19 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   setActiveRunId: (activeRunId) => set({ activeRunId }),
   setViewport: (viewport) => set({ viewport }),
   setWorkflowMeta: (workflowName, workflowDescription) =>
-    set({ workflowName, workflowDescription }),
+    set((state) => ({
+      workflowName,
+      workflowDescription,
+      workflows: state.workflows.map((workflow) =>
+        workflow.id === state.workflowId
+          ? {
+              ...workflow,
+              name: workflowName,
+              description: workflowDescription,
+            }
+          : workflow,
+      ),
+    })),
   setRuns: (runs) =>
     set({
       runs,

@@ -209,8 +209,8 @@ export function RunPayloadSection({
             <Icon className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/34">{label}</p>
-            <p className="mt-1 text-xs text-white/42">
+            <p className="type-eyebrow text-white/34">{label}</p>
+            <p className="type-meta mt-1 text-white/46">
               {canPrettyPrint ? (displayMode === "pretty" ? "Pretty formatted" : "Raw payload") : "Raw payload"}
             </p>
           </div>
@@ -221,7 +221,7 @@ export function RunPayloadSection({
             <button
               type="button"
               className={cn(
-                "inline-flex h-8 items-center gap-1 rounded-full border px-3 text-[11px] uppercase tracking-[0.18em] transition",
+                "type-eyebrow inline-flex h-8 items-center gap-1 rounded-full border px-3 transition",
                 displayMode === "pretty"
                   ? "border-violet-400/30 bg-violet-500/12 text-violet-100"
                   : "border-white/8 bg-white/[0.03] text-white/44 hover:bg-white/[0.06] hover:text-white/70",
@@ -236,7 +236,7 @@ export function RunPayloadSection({
           ) : null}
           <button
             type="button"
-            className="inline-flex h-8 items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-3 text-[11px] uppercase tracking-[0.18em] text-white/52 transition hover:bg-white/[0.06] hover:text-white"
+            className="type-eyebrow inline-flex h-8 items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-3 text-white/52 transition hover:bg-white/[0.06] hover:text-white"
             onClick={() => void handleCopy()}
           >
             {isCopied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
@@ -245,7 +245,7 @@ export function RunPayloadSection({
           {isLargePayload ? (
             <button
               type="button"
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-3 text-[11px] uppercase tracking-[0.18em] text-white/52 transition hover:bg-white/[0.06] hover:text-white"
+              className="type-eyebrow inline-flex h-8 items-center gap-1 rounded-full border border-white/8 bg-white/[0.03] px-3 text-white/52 transition hover:bg-white/[0.06] hover:text-white"
               onClick={() => setIsExpanded((current) => !current)}
             >
               {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}

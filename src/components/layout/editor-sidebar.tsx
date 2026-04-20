@@ -41,10 +41,10 @@ export function EditorSidebar() {
     >
       <div className="mb-6 shrink-0 flex items-center justify-between">
         <div className={cn("transition-opacity", sidebarCollapsed && "opacity-0")}>
-          <p className="text-xs uppercase tracking-[0.32em] text-white/28">
+          <p className="type-eyebrow text-white/28">
             Quick Access
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+          <h2 className="type-section-title mt-1 text-white">
             Nodes
           </h2>
         </div>
@@ -62,7 +62,7 @@ export function EditorSidebar() {
       </div>
 
       {!sidebarCollapsed ? (
-        <div className="mb-5 shrink-0 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-sm text-white/40">
+        <div className="type-body mb-5 shrink-0 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-white/40">
           <Search className="h-4 w-4" />
           Search nodes
         </div>
@@ -95,10 +95,10 @@ export function EditorSidebar() {
               </div>
               {!sidebarCollapsed ? (
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="type-card-title truncate text-white">
                     {template.title}
                   </p>
-                  <p className="truncate text-xs text-white/38">
+                  <p className="type-meta mt-0.5 truncate text-white/44">
                     {template.subtitle}
                   </p>
                 </div>
