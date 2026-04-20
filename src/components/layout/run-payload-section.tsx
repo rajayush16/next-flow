@@ -98,6 +98,80 @@ function hasLargePayload(value: string) {
   return value.length > 280 || value.split("\n").length > 8;
 }
 
+function renderPrettyJsonValue(value: unknown, depth = 0): React.ReactNode {
+  if (typeof value === "string") {
+    return (
+      <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-6 text-white/84">
+        {normalizeEscapedWhitespace(value)}
+      </pre>
+    );
+  }
+
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
+    return (
+      <span className="font-mono text-[12.5px] leading-6 text-white/72">
+        {String(value)}
+      </span>
+    );
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <span className="font-mono text-[12.5px] leading-6 text-white/46">[]</span>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {value.map((item, index) => (
+          <div
+            key={`${depth}-array-${index}`}
+            className="rounded-2xl border border-white/6 bg-black/18 px-3 py-2.5"
+          >
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-white/30">
+              [{index}]
+            </p>
+            {renderPrettyJsonValue(item, depth + 1)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value);
+
+    if (entries.length === 0) {
+      return <span className="font-mono text-[12.5px] leading-6 text-white/46">{"{}"}</span>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {entries.map(([key, entryValue]) => (
+          <div
+            key={`${depth}-${key}`}
+            className="rounded-2xl border border-white/6 bg-black/18 px-3 py-2.5"
+          >
+            <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-white/30">
+              {key.replaceAll("_", " ")}
+            </p>
+            {renderPrettyJsonValue(entryValue, depth + 1)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <span className="font-mono text-[12.5px] leading-6 text-white/72">
+      {String(value)}
+    </span>
+  );
+}
+
 export function RunPayloadSection({
   label,
   content,
@@ -190,16 +264,29 @@ export function RunPayloadSection({
           tone === "logs" && "border-white/7 bg-black/24",
         )}
       >
-        <pre
-          className={cn(
-            "m-0 font-mono text-[12.5px] leading-6 whitespace-pre-wrap break-words",
-            tone === "input" && "text-sky-100/78",
-            tone === "output" && "text-white/84",
-            tone === "logs" && "text-white/66",
-          )}
-        >
-          {textToRender || "No content"}
-        </pre>
+        {displayMode === "pretty" && payload.kind === "json" ? (
+          <div
+            className={cn(
+              "space-y-2",
+              tone === "input" && "text-sky-100/78",
+              tone === "output" && "text-white/84",
+              tone === "logs" && "text-white/66",
+            )}
+          >
+            {renderPrettyJsonValue(payload.parsedValue)}
+          </div>
+        ) : (
+          <pre
+            className={cn(
+              "m-0 font-mono text-[12.5px] leading-6 whitespace-pre-wrap break-words",
+              tone === "input" && "text-sky-100/78",
+              tone === "output" && "text-white/84",
+              tone === "logs" && "text-white/66",
+            )}
+          >
+            {textToRender || "No content"}
+          </pre>
+        )}
       </div>
     </section>
   );
