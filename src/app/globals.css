@@ -79,6 +79,39 @@ select {
   color: white;
 }
 
+.nextflow-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.34) rgba(255, 255, 255, 0.03);
+}
+
+.nextflow-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.nextflow-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 999px;
+}
+
+.nextflow-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(168, 85, 247, 0.5),
+    rgba(124, 58, 237, 0.32)
+  );
+  border: 2px solid rgba(10, 10, 12, 0.72);
+  border-radius: 999px;
+}
+
+.nextflow-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(196, 181, 253, 0.6),
+    rgba(139, 92, 246, 0.42)
+  );
+}
+
 .nextflow-node-running::after {
   content: "";
   position: absolute;

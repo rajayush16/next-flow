@@ -1,9 +1,18 @@
 "use client";
 
-import { ChevronDown, Clock3, LoaderCircle, Logs, Workflow } from "lucide-react";
+import {
+  ChevronDown,
+  Clock3,
+  LoaderCircle,
+  Logs,
+  Sparkles,
+  Workflow,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useWorkflowStore } from "@/store/workflow-store";
+
+import { RunPayloadSection } from "./run-payload-section";
 
 const statusStyles = {
   success: "bg-emerald-500/16 text-emerald-200",
@@ -19,78 +28,6 @@ const runTargetLabels = {
   selected: "Selected nodes",
   single: "Single node",
 };
-
-function parseSummary(summary: string) {
-  if (!summary.trim()) {
-    return [];
-  }
-
-  return summary.split(" | ").map((segment) => {
-    const separatorIndex = segment.indexOf(": ");
-
-    if (separatorIndex === -1) {
-      return {
-        label: null,
-        value: segment,
-      };
-    }
-
-    return {
-      label: segment.slice(0, separatorIndex),
-      value: segment.slice(separatorIndex + 2),
-    };
-  });
-}
-
-function SummaryBlock({
-  label,
-  summary,
-  tone,
-}: {
-  label: string;
-  summary: string;
-  tone: "input" | "output";
-}) {
-  const entries = parseSummary(summary);
-
-  return (
-    <div className="mt-2 rounded-2xl border border-white/6 bg-white/[0.02] p-3">
-      <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-white/32">
-        {label}
-      </p>
-      <div className="space-y-2">
-        {entries.length > 0 ? (
-          entries.map((entry, index) => (
-            <div key={`${label}-${index}`} className="space-y-1">
-              {entry.label ? (
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/30">
-                  {entry.label.replaceAll("_", " ")}
-                </p>
-              ) : null}
-              <p
-                className={cn(
-                  "whitespace-pre-wrap break-words text-xs leading-6",
-                  tone === "input" ? "text-white/50" : "text-white/64",
-                )}
-              >
-                {entry.value}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p
-            className={cn(
-              "whitespace-pre-wrap break-words text-xs leading-6",
-              tone === "input" ? "text-white/50" : "text-white/64",
-            )}
-          >
-            {summary}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export function HistoryPanel() {
   const runs = useWorkflowStore((state) => state.runs);
@@ -108,7 +45,7 @@ export function HistoryPanel() {
         </h2>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+      <div className="nextflow-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {runs.map((run) => {
           const expanded = run.id === activeRunId;
 
@@ -122,8 +59,8 @@ export function HistoryPanel() {
                 className="flex w-full items-start justify-between gap-3 text-left"
                 onClick={() => setActiveRunId(expanded ? null : run.id)}
               >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={cn(
                         "rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.2em]",
@@ -136,24 +73,31 @@ export function HistoryPanel() {
                       {run.target}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-white">
-                    {new Date(run.startedAt).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-white/42">
-                    <Clock3 className="h-3.5 w-3.5" />
-                    {run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "In progress"}
+
+                  <div className="space-y-1">
+                    <p className="break-words text-sm font-medium leading-6 text-white">
+                      {new Date(run.startedAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="break-all font-mono text-[11px] uppercase tracking-[0.18em] text-white/28">
+                      {run.id}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/28">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-white/8 px-2.5 py-1">
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/42">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/8 px-2.5 py-1">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      {run.durationMs ? `${(run.durationMs / 1000).toFixed(1)}s` : "In progress"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/8 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-white/32">
                       <Workflow className="h-3 w-3" />
                       {runTargetLabels[run.target]}
                     </span>
-                    <span className="rounded-full border border-white/8 px-2.5 py-1">
+                    <span className="rounded-full border border-white/8 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-white/32">
                       {run.scopeNodeIds.length} node{run.scopeNodeIds.length === 1 ? "" : "s"}
                     </span>
                   </div>
@@ -161,7 +105,7 @@ export function HistoryPanel() {
 
                 <ChevronDown
                   className={cn(
-                    "mt-1 h-4 w-4 text-white/36 transition",
+                    "mt-1 h-4 w-4 shrink-0 text-white/36 transition",
                     expanded && "rotate-180",
                   )}
                 />
@@ -170,20 +114,21 @@ export function HistoryPanel() {
               {expanded ? (
                 <div className="mt-4 space-y-3 border-t border-white/8 pt-4">
                   {run.nodeRuns.map((nodeRun) => (
-                    <div
+                    <article
                       key={nodeRun.id}
-                      className="rounded-2xl border border-white/6 bg-black/18 p-3"
+                      className="rounded-[24px] border border-white/6 bg-black/18 p-3.5"
                     >
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-white">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="break-all text-sm font-medium leading-6 text-white">
                             {nodeRun.nodeId}
                           </p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-white/28">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-white/28">
                             {nodeRun.nodeKind}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                           <span
                             className={cn(
                               "rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em]",
@@ -192,7 +137,7 @@ export function HistoryPanel() {
                           >
                             {nodeRun.status}
                           </span>
-                          <div className="flex items-center gap-2 text-xs text-white/44">
+                          <div className="inline-flex items-center gap-2 rounded-full border border-white/8 px-2.5 py-1 text-xs text-white/44">
                             {nodeRun.status === "running" ? (
                               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
                             ) : null}
@@ -202,40 +147,41 @@ export function HistoryPanel() {
                           </div>
                         </div>
                       </div>
-                      <SummaryBlock
-                        label="Input"
-                        summary={nodeRun.inputSummary}
-                        tone="input"
-                      />
-                      <SummaryBlock
-                        label="Output"
-                        summary={nodeRun.outputSummary}
-                        tone="output"
-                      />
-                      {nodeRun.logs.length > 0 ? (
-                        <div className="mt-2 rounded-2xl border border-white/6 bg-white/[0.02] p-3">
-                          <p className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-white/32">
-                            <Logs className="h-3 w-3" />
-                            Logs
+
+                      <div className="space-y-3">
+                        <RunPayloadSection
+                          label="Input"
+                          content={nodeRun.inputSummary}
+                          tone="input"
+                          icon={Workflow}
+                        />
+                        <RunPayloadSection
+                          label="Output"
+                          content={nodeRun.outputSummary}
+                          tone="output"
+                          icon={Sparkles}
+                        />
+                        {nodeRun.logs.length > 0 ? (
+                          <RunPayloadSection
+                            label="Logs"
+                            content={nodeRun.logs}
+                            tone="logs"
+                            icon={Logs}
+                          />
+                        ) : null}
+                      </div>
+
+                      {nodeRun.errorMessage ? (
+                        <div className="mt-3 rounded-[20px] border border-rose-400/14 bg-rose-500/[0.06] px-4 py-3">
+                          <p className="text-[11px] uppercase tracking-[0.22em] text-rose-200/60">
+                            Error
                           </p>
-                          <div className="space-y-1.5">
-                            {nodeRun.logs.map((log, index) => (
-                              <p
-                                key={`${nodeRun.id}-log-${index}`}
-                                className="text-xs leading-5 text-white/42"
-                              >
-                                {log}
-                              </p>
-                            ))}
-                          </div>
+                          <p className="mt-2 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-6 text-rose-100/92">
+                            {nodeRun.errorMessage}
+                          </p>
                         </div>
                       ) : null}
-                      {nodeRun.errorMessage ? (
-                        <p className="mt-2 text-xs leading-5 text-rose-200/90">
-                          Error: {nodeRun.errorMessage}
-                        </p>
-                      ) : null}
-                    </div>
+                    </article>
                   ))}
                 </div>
               ) : null}
