@@ -37,6 +37,69 @@ type NodeTaskPayload = {
   inputs: Record<string, string | string[] | null>;
 };
 
+const GEMINI_RETRYABLE_STATUS_CODES = ["429", "500", "503", "504"];
+
+function waitForDelay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableGeminiError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return GEMINI_RETRYABLE_STATUS_CODES.some((statusCode) =>
+    error.message.includes(`[${statusCode}`) || error.message.includes(` ${statusCode} `),
+  );
+}
+
+async function generateGeminiTextWithRetry(args: {
+  modelName: string;
+  systemPrompt: string | null;
+  userMessage: string;
+  imageParts: Awaited<ReturnType<typeof imageSourceToGeminiPart>>[];
+}) {
+  const client = getGeminiClient();
+
+  if (!client) {
+    throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is required to run LLM nodes.");
+  }
+
+  const retryDelaysMs = [1500, 4000, 8000];
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= retryDelaysMs.length; attempt += 1) {
+    try {
+      const model = client.getGenerativeModel({
+        model: args.modelName,
+        ...(args.systemPrompt ? { systemInstruction: args.systemPrompt } : {}),
+      });
+      const response = await model.generateContent([args.userMessage, ...args.imageParts]);
+
+      return {
+        text: response.response.text().trim(),
+        attempts: attempt + 1,
+      };
+    } catch (error) {
+      lastError = error;
+
+      if (!isRetryableGeminiError(error) || attempt === retryDelaysMs.length) {
+        throw error;
+      }
+
+      const retryDelayMs = retryDelaysMs[attempt];
+
+      if (retryDelayMs === undefined) {
+        throw error;
+      }
+
+      await waitForDelay(retryDelayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Gemini request failed.");
+}
+
 export const executeTextNodeTask = task({
   id: "execute-text-node",
   run: async ({ node }: NodeTaskPayload): Promise<WorkflowNodeTaskResult> => {
@@ -238,17 +301,7 @@ export const executeRunLlmNodeTask = task({
       throw new Error("LLM nodes require a user message.");
     }
 
-    const client = getGeminiClient();
-
-    if (!client) {
-      throw new Error("GOOGLE_GENERATIVE_AI_API_KEY is required to run LLM nodes.");
-    }
-
     const systemPrompt = readTextInput(inputs, "system_prompt");
-    const model = client.getGenerativeModel({
-      model: node.data.model || "gemini-2.5-flash",
-      ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
-    });
     const imageSources = Array.isArray(inputs.images)
       ? inputs.images.filter((value): value is string => Boolean(value))
       : inputs.images
@@ -257,8 +310,14 @@ export const executeRunLlmNodeTask = task({
     const imageParts = await Promise.all(
       imageSources.map((imageSource) => imageSourceToGeminiPart(imageSource)),
     );
-    const response = await model.generateContent([userMessage, ...imageParts]);
-    const text = response.response.text().trim();
+    const modelName = node.data.model || "gemini-2.5-flash";
+    const response = await generateGeminiTextWithRetry({
+      modelName,
+      systemPrompt: systemPrompt ?? null,
+      userMessage,
+      imageParts,
+    });
+    const text = response.text;
     const outputs = { output: text };
 
     return {
@@ -270,7 +329,11 @@ export const executeRunLlmNodeTask = task({
       inputSummary: summarizeNodeInputs(inputs),
       outputSummary: summarizeNodeOutputs(outputs),
       errorMessage: null,
-      logs: ["Gemini response generated via Trigger.dev."],
+      logs: [
+        response.attempts === 1
+          ? "Gemini response generated via Trigger.dev."
+          : `Gemini response generated via Trigger.dev after ${response.attempts} attempts.`,
+      ],
       dataPatch: {
         result: text,
       },

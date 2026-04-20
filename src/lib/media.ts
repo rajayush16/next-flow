@@ -10,6 +10,8 @@ import ffprobe from "ffprobe-static";
 import { uploadBufferToTransloadit } from "@/lib/transloadit";
 
 const execFileAsync = promisify(execFile);
+const resolvedFfmpegPath = process.env.FFMPEG_PATH || ffmpegPath;
+const resolvedFfprobePath = process.env.FFPROBE_PATH || ffprobe.path;
 
 function extensionFromMimeType(mimeType: string) {
   if (mimeType.includes("png")) {
@@ -121,19 +123,19 @@ export async function cleanupTempDir(tempDir: string) {
 }
 
 export async function runFfmpeg(args: string[]) {
-  if (!ffmpegPath) {
+  if (!resolvedFfmpegPath) {
     throw new Error("ffmpeg-static is not available.");
   }
 
-  await execFileAsync(ffmpegPath, args);
+  await execFileAsync(resolvedFfmpegPath, args);
 }
 
 export async function getVideoDurationInSeconds(videoPath: string) {
-  if (!ffprobe.path) {
+  if (!resolvedFfprobePath) {
     return null;
   }
 
-  const { stdout } = await execFileAsync(ffprobe.path, [
+  const { stdout } = await execFileAsync(resolvedFfprobePath, [
     "-v",
     "error",
     "-show_entries",
