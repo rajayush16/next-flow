@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     extensions: [
       prismaExtension({
+        mode: "legacy",
         schema: "prisma/schema.prisma",
       }),
     ],
